@@ -5,14 +5,15 @@ fn main() {
         // .generate_inline_functions(true)
         // .wrap_static_fns(true)
         // .wrap_static_fns_path(&out_dir.join("a"))
-        .header("src/tp_stub/tp_stub.h")  // 包含宏的头文件
+        .header("src/tp_stub/tp_stub.h") // 包含宏的头文件
         .generate_comments(true)
-        .allowlist_file(".*tp_stub\\.h") 
+        .allowlist_file(".*tp_stub\\.h")
         .vtable_generation(true)
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate()
         .expect("bindgen failed");
-    bindings.write_to_file(std::env::var("OUT_DIR").unwrap() + "/generated.rs")
+    bindings
+        .write_to_file(std::env::var("OUT_DIR").unwrap() + "/generated.rs")
         .expect("write failed");
     cc::Build::new()
         .cpp(true)

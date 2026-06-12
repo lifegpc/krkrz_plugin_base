@@ -1,4 +1,4 @@
-#[allow(non_snake_case)]
+#[allow(non_snake_case, non_camel_case_types)]
 pub mod tp_stub;
 
 use tp_stub::*;

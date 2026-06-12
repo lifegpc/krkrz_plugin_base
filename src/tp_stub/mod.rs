@@ -76,6 +76,159 @@ impl tTJSString {
         };
         ptr(self)
     }
+
+    pub fn alloc_buffer(&mut self, len: tjs_uint) -> *mut tjs_char {
+        type Type = extern "system" fn(s: *mut tTJSString, len: tjs_uint) -> *mut tjs_char;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr314573cca30a7c2aecc9166fbf5400c9,
+                "tjs_char * tTJSString::AllocBuffer(tjs_uint)\0",
+                Type
+            )
+        };
+        ptr(self, len)
+    }
+
+    pub fn append_buffer(&mut self, len: tjs_uint) -> *mut tjs_char {
+        type Type = extern "system" fn(s: *mut tTJSString, len: tjs_uint) -> *mut tjs_char;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr03da356426c038fad663c836c3e330ef,
+                "tjs_char * tTJSString::AppendBuffer(tjs_uint)\0",
+                Type
+            )
+        };
+        ptr(self, len)
+    }
+
+    pub fn fix_len(&mut self) {
+        type Type = extern "system" fn(s: *mut tTJSString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr31dbebdedc08d75e34a2cd564ce60586,
+                "void tTJSString::FixLen()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn replace(&mut self, from: &tTJSString, to: &tTJSString, forall: bool) {
+        type Type = extern "system" fn(
+            s: *mut tTJSString,
+            from: *const tTJSString,
+            to: *const tTJSString,
+            forall: bool,
+        );
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrd9224ad7a0de743a7eea15fdb2c5f934,
+                "void tTJSString::Replace(const tTJSString &,const tTJSString &,bool)\0",
+                Type
+            )
+        };
+        ptr(self, from as *const _, to as *const _, forall)
+    }
+
+    pub fn to_lower_case(&mut self) {
+        type Type = extern "system" fn(s: *mut tTJSString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrc01b0720b49ce4f792446d8965d2c31f,
+                "void tTJSString::ToLowerCase()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn to_upper_case(&mut self) {
+        type Type = extern "system" fn(s: *mut tTJSString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr4af47e46a11e1357cb994f405289d13e,
+                "void tTJSString::ToUppserCase()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn get_hint(&mut self) -> *mut tjs_uint32 {
+        type Type = extern "system" fn(s: *mut tTJSString) -> *mut tjs_uint32;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr25b6dafa19bfa5bde1a8b519da248f82,
+                "tjs_uint32 * tTJSString::GetHint()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn independ(&mut self) -> *mut tjs_char {
+        type Type = extern "system" fn(s: *mut tTJSString) -> *mut tjs_char;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr72425405819c900aec719491cbd90c6d,
+                "tjs_char * tTJSString::Independ()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn c_str(&self) -> *const tjs_char {
+        type Type = extern "system" fn(s: *const tTJSString) -> *const tjs_char;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtra79942af73f33bff6e432c9fd808e469,
+                "const tjs_char * tTJSString::c_str() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn as_variant_string_no_add_ref(&self) -> *mut tTJSVariantString {
+        type Type = extern "system" fn(s: *const tTJSString) -> *mut tTJSVariantString;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrdf106470a4141ebc7eda22160859ffdc,
+                "tTJSVariantString * tTJSString::AsVariantStringNoAddRef() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn as_integer(&self) -> tjs_int64 {
+        type Type = extern "system" fn(s: *const tTJSString) -> tjs_int64;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr469bc225b0ecd9561aae5a46b85ded42,
+                "tjs_int64 tTJSString::AsInteger() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    #[inline(always)]
+    pub fn compare_ic<T: ?Sized>(&self, rhs: &T) -> tjs_int
+    where
+        Self: tTJSStringCompareIC<T>,
+    {
+        self.compare(rhs)
+    }
+
+    #[inline(always)]
+    pub fn equal_ignore_case<T: ?Sized>(&self, rhs: &T) -> bool
+    where
+        Self: tTJSStringCompareIC<T>,
+    {
+        self.compare(rhs) == 0
+    }
 }
 
 impl Clone for tTJSString {
@@ -402,5 +555,118 @@ impl AddAssign<tjs_char> for tTJSString {
             )
         };
         ptr(self, rhs)
+    }
+}
+
+impl PartialEq<tTJSString> for tTJSString {
+    fn eq(&self, other: &tTJSString) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtra6663c078b3aa79b39ee2d09f3875765,
+                "bool tTJSString::operator ==(const tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, other)
+    }
+
+    fn ne(&self, other: &tTJSString) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrefbe634ce4f13633e220cae167cf63fb,
+                "bool tTJSString::operator !=(const tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, other)
+    }
+}
+
+pub trait tTJSStringCompareIC<Rhs: ?Sized> {
+    fn compare(&self, target: &Rhs) -> tjs_int;
+}
+
+impl tTJSStringCompareIC<tTJSString> for tTJSString {
+    fn compare(&self, target: &tTJSString) -> tjs_int {
+        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> tjs_int;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr57f4147bcc09e4e4442ffc9b0895727e,
+                "tjs_int tTJSString::CompareIC(const tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, target)
+    }
+}
+
+impl PartialEq<*const tjs_char> for tTJSString {
+    fn eq(&self, other: &*const tjs_char) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr1fb2d2e44cf83aebef7b26fd6b20bc2b,
+                "bool tTJSString::operator ==(const tjs_char *) const\0",
+                Type
+            )
+        };
+        ptr(self, *other)
+    }
+
+    fn ne(&self, other: &*const tjs_char) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrbd6aa777bac947f5cffd891e9c724794,
+                "bool tTJSString::operator !=(const tjs_char *) const\0",
+                Type
+            )
+        };
+        ptr(self, *other)
+    }
+}
+
+impl tTJSStringCompareIC<*const tjs_char> for tTJSString {
+    fn compare(&self, target: &*const tjs_char) -> tjs_int {
+        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> tjs_int;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr83c662330b75d616cdc8a4e11d7ababa,
+                "tjs_int tTJSString::CompareIC(const tjs_char *) const\0",
+                Type
+            )
+        };
+        ptr(self, *target)
+    }
+}
+
+impl PartialEq<[tjs_char]> for tTJSString {
+    fn eq(&self, other: &[tjs_char]) -> bool {
+        self.eq(&other.as_ptr())
+    }
+    fn ne(&self, other: &[tjs_char]) -> bool {
+        self.ne(&other.as_ptr())
+    }
+}
+
+impl tTJSStringCompareIC<[tjs_char]> for tTJSString {
+    fn compare(&self, target: &[tjs_char]) -> tjs_int {
+        self.compare(&target.as_ptr())
+    }
+}
+
+impl PartialEq<str> for tTJSString {
+    fn eq(&self, other: &str) -> bool {
+        let ty: Self = other.into();
+        self.eq(&ty)
+    }
+}
+
+impl tTJSStringCompareIC<str> for tTJSString {
+    fn compare(&self, target: &str) -> tjs_int {
+        let ty: Self = target.into();
+        self.compare(&ty)
     }
 }

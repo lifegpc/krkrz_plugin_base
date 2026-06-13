@@ -8,6 +8,9 @@ fn main() {
         .header("src/tp_stub/tp_stub.h") // 包含宏的头文件
         .generate_comments(true)
         .allowlist_file(".*tp_stub\\.h")
+        .blocklist_type("tTJSNativeInstance")
+        .derive_default(true)
+        .no_default("tTJSVariant")
         .vtable_generation(true)
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate()

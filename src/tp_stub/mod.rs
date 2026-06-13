@@ -990,3 +990,460 @@ impl tTJSStringStartsWith<str> for tTJSString {
         self.starts_with(&ty)
     }
 }
+
+impl iTJSDispatch2 {
+    pub unsafe fn add_ref(&mut self) -> tjs_uint {
+        unsafe { ((*self.vtable_).iTJSDispatch2_AddRef)(self) }
+    }
+
+    pub unsafe fn release(&mut self) -> tjs_uint {
+        unsafe { ((*self.vtable_).iTJSDispatch2_Release)(self) }
+    }
+
+    pub unsafe fn func_call(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_FuncCall)(
+                self, flag, membername, hint, result, numparams, param, objthis,
+            )
+        }
+    }
+
+    pub unsafe fn func_call_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_FuncCallByNum)(
+                self, flag, num, result, numparams, param, objthis,
+            )
+        }
+    }
+
+    pub unsafe fn prop_get(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_PropGet)(self, flag, membername, hint, result, objthis)
+        }
+    }
+
+    pub unsafe fn prop_get_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_PropGetByNum)(self, flag, num, result, objthis) }
+    }
+
+    pub unsafe fn prop_set(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_PropSet)(self, flag, membername, hint, param, objthis)
+        }
+    }
+
+    pub unsafe fn prop_set_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_PropSetByNum)(self, flag, num, param, objthis) }
+    }
+
+    pub unsafe fn get_count(
+        &mut self,
+        result: *mut tjs_int,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_GetCount)(self, result, membername, hint, objthis) }
+    }
+
+    pub unsafe fn get_count_by_num(
+        &mut self,
+        result: *mut tjs_int,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_GetCountByNum)(self, result, num, objthis) }
+    }
+
+    pub unsafe fn prop_set_by_vs(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *mut tTJSVariantString,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_PropSetByVS)(self, flag, membername, param, objthis)
+        }
+    }
+
+    pub unsafe fn enum_members(
+        &mut self,
+        flag: tjs_uint32,
+        callback: *mut tTJSVariantClosure,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_EnumMembers)(self, flag, callback, objthis) }
+    }
+
+    pub unsafe fn delete_member(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_DeleteMember)(self, flag, membername, hint, objthis)
+        }
+    }
+
+    pub unsafe fn delete_member_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_DeleteMemberByNum)(self, flag, num, objthis) }
+    }
+
+    pub unsafe fn invalidate(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_Invalidate)(self, flag, membername, hint, objthis) }
+    }
+
+    pub unsafe fn invalidate_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_InvalidateByNum)(self, flag, num, objthis) }
+    }
+
+    pub unsafe fn is_valid(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_IsValid)(self, flag, membername, hint, objthis) }
+    }
+
+    pub unsafe fn is_valid_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_IsValidByNum)(self, flag, num, objthis) }
+    }
+
+    pub unsafe fn create_new(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut *mut iTJSDispatch2,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_CreateNew)(
+                self, flag, membername, hint, result, numparams, param, objthis,
+            )
+        }
+    }
+
+    pub unsafe fn create_new_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut *mut iTJSDispatch2,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_CreateNewByNum)(
+                self, flag, num, result, numparams, param, objthis,
+            )
+        }
+    }
+
+    pub unsafe fn reserved1(&mut self) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_Reserved1)(self) }
+    }
+
+    pub unsafe fn is_instance_of(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        classname: *const tjs_char,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_IsInstanceOf)(
+                self, flag, membername, hint, classname, objthis,
+            )
+        }
+    }
+
+    pub unsafe fn is_instance_of_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        classname: *const tjs_char,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_IsInstanceOfByNum)(self, flag, num, classname, objthis)
+        }
+    }
+
+    pub unsafe fn operation(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_Operation)(
+                self, flag, membername, hint, result, param, objthis,
+            )
+        }
+    }
+
+    pub unsafe fn operation_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_OperationByNum)(self, flag, num, result, param, objthis)
+        }
+    }
+
+    pub unsafe fn native_instance_support(
+        &mut self,
+        flag: tjs_uint32,
+        classid: tjs_int32,
+        pointer: *mut *mut iTJSNativeInstance,
+    ) -> tjs_error {
+        unsafe {
+            ((*self.vtable_).iTJSDispatch2_NativeInstanceSupport)(self, flag, classid, pointer)
+        }
+    }
+
+    pub unsafe fn class_instance_info(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_uint,
+        value: *mut tTJSVariant,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_ClassInstanceInfo)(self, flag, num, value) }
+    }
+
+    pub unsafe fn reserved2(&mut self) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_Reserved2)(self) }
+    }
+
+    pub unsafe fn reserved3(&mut self) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSDispatch2_Reserved3)(self) }
+    }
+}
+
+impl iTJSNativeInstance {
+    pub unsafe fn construct(
+        &mut self,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        tjs_obj: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { ((*self.vtable_).iTJSNativeInstance_Construct)(self, numparams, param, tjs_obj) }
+    }
+
+    pub unsafe fn invalidate(&mut self) {
+        unsafe { ((*self.vtable_).iTJSNativeInstance_Invalidate)(self) }
+    }
+
+    pub unsafe fn destruct(&mut self) {
+        unsafe { ((*self.vtable_).iTJSNativeInstance_Destruct)(self) }
+    }
+}
+
+pub trait TJSNativeInstance {
+    fn construct(
+        &mut self,
+        _numparams: tjs_int,
+        _param: *mut *mut tTJSVariant,
+        _tjs_obj: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        TJS_S_OK
+    }
+    fn invalidate(&mut self) {}
+}
+
+#[repr(C)]
+pub struct tTJSNativeInstance {
+    _base: iTJSNativeInstance,
+    ni: Box<dyn TJSNativeInstance>,
+}
+
+impl tTJSNativeInstance {
+    pub fn new<T: TJSNativeInstance + 'static>(ni: T) -> *mut iTJSNativeInstance {
+        static VTABLE: iTJSNativeInstance__bindgen_vtable = iTJSNativeInstance__bindgen_vtable {
+            iTJSNativeInstance_Construct: tTJSNativeInstance::construct,
+            iTJSNativeInstance_Invalidate: tTJSNativeInstance::invalidate,
+            iTJSNativeInstance_Destruct: tTJSNativeInstance::destruct,
+        };
+        let boxed = Box::new(tTJSNativeInstance {
+            _base: iTJSNativeInstance { vtable_: &VTABLE },
+            ni: Box::new(ni) as Box<dyn TJSNativeInstance>,
+        });
+        Box::into_raw(boxed) as *mut iTJSNativeInstance
+    }
+    unsafe extern "C" fn construct(
+        this: *mut iTJSNativeInstance,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        tjs_obj: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        let self_ = unsafe { &mut *(this as *mut tTJSNativeInstance) };
+        self_.ni.construct(numparams, param, tjs_obj)
+    }
+    unsafe extern "C" fn invalidate(this: *mut iTJSNativeInstance) {
+        let self_ = unsafe { &mut *(this as *mut tTJSNativeInstance) };
+        self_.ni.invalidate();
+    }
+    unsafe extern "C" fn destruct(this: *mut iTJSNativeInstance) {
+        let _box = unsafe { Box::from_raw(this as *mut tTJSNativeInstance) };
+    }
+}
+
+impl tTJSVariant {
+    pub fn new() -> Self {
+        type Type = extern "system" fn(s: *mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr3fc0c32ee41ea0c515f8fbb681e37982,
+                "tTJSVariant::tTJSVariant()\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my);
+        my
+    }
+
+    pub fn clear(&mut self) {
+        type Type = extern "system" fn(s: *mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr58be195f96a36c158d638e3b0c79308b,
+                "void tTJSVariant::Clear()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn as_object(&self) -> *mut iTJSDispatch2 {
+        type Type = extern "system" fn(s: *const tTJSVariant) -> *mut iTJSDispatch2;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr841ce4492b37321eea0c1b500de9b352,
+                "iTJSDispatch2 * tTJSVariant::AsObject() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+}
+
+impl From<*mut iTJSDispatch2> for tTJSVariant {
+    fn from(value: *mut iTJSDispatch2) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, ref_: *mut iTJSDispatch2);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrace6cce1353865d7376caca1f2124216,
+                "tTJSVariant::tTJSVariant(iTJSDispatch2 *)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
+impl Default for tTJSVariant {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Drop for tTJSVariant {
+    fn drop(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr3a4d914ca7d24989c236ad223c002d49,
+                "tTJSVariant::~ tTJSVariant()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+}

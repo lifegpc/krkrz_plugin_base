@@ -18,5 +18,6 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
 unsafe extern "system" fn v2_unlink() -> i32 {
     let s = "[simple plugin]unlinked".into();
     unsafe { TVPAddLog(&s) };
+    unsafe { TVPUninitImportStub() };
     0
 }

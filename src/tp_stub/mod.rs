@@ -66,6 +66,14 @@ impl tTJSString {
         my
     }
 
+    #[inline(always)]
+    pub fn assign<T>(&mut self, rhs: T) -> &mut Self
+    where
+        Self: Assign<T>,
+    {
+        Assign::assign(self, rhs)
+    }
+
     pub fn clear(&mut self) {
         type Type = extern "system" fn(s: *mut tTJSString);
         let ptr = unsafe {
@@ -991,15 +999,99 @@ impl tTJSStringStartsWith<str> for tTJSString {
     }
 }
 
+pub trait Assign<T: ?Sized> {
+    fn assign(&mut self, rhs: T) -> &mut Self;
+}
+
+impl Assign<&tTJSString> for tTJSString {
+    fn assign(&mut self, rhs: &tTJSString) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSString, *const tTJSString) -> *mut tTJSString;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr18f1ad16c11429707cbf8ea4d1d4a21e,
+                "tTJSString & tTJSString::operator =(const tTJSString &)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<*const tjs_char> for tTJSString {
+    fn assign(&mut self, rhs: *const tjs_char) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSString, *const tjs_char) -> *mut tTJSString;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr18f1ad16c11429707cbf8ea4d1d4a21e,
+                "tTJSString & tTJSString::operator =(const tjs_char *)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<&[tjs_char]> for tTJSString {
+    fn assign(&mut self, rhs: &[tjs_char]) -> &mut Self {
+        self.assign(rhs.as_ptr())
+    }
+}
+
+impl Assign<*const tjs_nchar> for tTJSString {
+    fn assign(&mut self, rhs: *const tjs_nchar) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSString, *const tjs_nchar) -> *mut tTJSString;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr550f317b573a1256af00586890ae82f1,
+                "tTJSString & tTJSString::operator =(const tjs_nchar *)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<&[tjs_nchar]> for tTJSString {
+    fn assign(&mut self, rhs: &[tjs_nchar]) -> &mut Self {
+        self.assign(rhs.as_ptr())
+    }
+}
+
+impl Assign<&[u8]> for tTJSString {
+    fn assign(&mut self, rhs: &[u8]) -> &mut Self {
+        self.assign(rhs.as_ptr() as *const i8)
+    }
+}
+
+impl Assign<&str> for tTJSString {
+    fn assign(&mut self, rhs: &str) -> &mut Self {
+        let mut encoded: Vec<_> = rhs.encode_utf16().collect();
+        encoded.push(0);
+        self.assign(encoded.as_ptr())
+    }
+}
+
+impl Default for tTJSString {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl iTJSDispatch2 {
+    #[inline(always)]
     pub unsafe fn add_ref(&mut self) -> tjs_uint {
         unsafe { ((*self.vtable_).iTJSDispatch2_AddRef)(self) }
     }
 
+    #[inline(always)]
     pub unsafe fn release(&mut self) -> tjs_uint {
         unsafe { ((*self.vtable_).iTJSDispatch2_Release)(self) }
     }
 
+    #[inline(always)]
     pub unsafe fn func_call(
         &mut self,
         flag: tjs_uint32,
@@ -1017,6 +1109,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn func_call_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1033,6 +1126,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn prop_get(
         &mut self,
         flag: tjs_uint32,
@@ -1046,6 +1140,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn prop_get_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1056,6 +1151,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_PropGetByNum)(self, flag, num, result, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn prop_set(
         &mut self,
         flag: tjs_uint32,
@@ -1069,6 +1165,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn prop_set_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1079,6 +1176,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_PropSetByNum)(self, flag, num, param, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn get_count(
         &mut self,
         result: *mut tjs_int,
@@ -1089,6 +1187,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_GetCount)(self, result, membername, hint, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn get_count_by_num(
         &mut self,
         result: *mut tjs_int,
@@ -1098,6 +1197,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_GetCountByNum)(self, result, num, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn prop_set_by_vs(
         &mut self,
         flag: tjs_uint32,
@@ -1110,6 +1210,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn enum_members(
         &mut self,
         flag: tjs_uint32,
@@ -1119,6 +1220,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_EnumMembers)(self, flag, callback, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn delete_member(
         &mut self,
         flag: tjs_uint32,
@@ -1131,6 +1233,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn delete_member_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1140,6 +1243,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_DeleteMemberByNum)(self, flag, num, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn invalidate(
         &mut self,
         flag: tjs_uint32,
@@ -1150,6 +1254,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_Invalidate)(self, flag, membername, hint, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn invalidate_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1159,6 +1264,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_InvalidateByNum)(self, flag, num, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn is_valid(
         &mut self,
         flag: tjs_uint32,
@@ -1169,6 +1275,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_IsValid)(self, flag, membername, hint, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn is_valid_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1178,6 +1285,7 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_IsValidByNum)(self, flag, num, objthis) }
     }
 
+    #[inline(always)]
     pub unsafe fn create_new(
         &mut self,
         flag: tjs_uint32,
@@ -1195,6 +1303,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn create_new_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1211,10 +1320,12 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn reserved1(&mut self) -> tjs_error {
         unsafe { ((*self.vtable_).iTJSDispatch2_Reserved1)(self) }
     }
 
+    #[inline(always)]
     pub unsafe fn is_instance_of(
         &mut self,
         flag: tjs_uint32,
@@ -1230,6 +1341,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn is_instance_of_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1242,6 +1354,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn operation(
         &mut self,
         flag: tjs_uint32,
@@ -1258,6 +1371,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn operation_by_num(
         &mut self,
         flag: tjs_uint32,
@@ -1271,6 +1385,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn native_instance_support(
         &mut self,
         flag: tjs_uint32,
@@ -1282,6 +1397,7 @@ impl iTJSDispatch2 {
         }
     }
 
+    #[inline(always)]
     pub unsafe fn class_instance_info(
         &mut self,
         flag: tjs_uint32,
@@ -1291,16 +1407,19 @@ impl iTJSDispatch2 {
         unsafe { ((*self.vtable_).iTJSDispatch2_ClassInstanceInfo)(self, flag, num, value) }
     }
 
+    #[inline(always)]
     pub unsafe fn reserved2(&mut self) -> tjs_error {
         unsafe { ((*self.vtable_).iTJSDispatch2_Reserved2)(self) }
     }
 
+    #[inline(always)]
     pub unsafe fn reserved3(&mut self) -> tjs_error {
         unsafe { ((*self.vtable_).iTJSDispatch2_Reserved3)(self) }
     }
 }
 
 impl iTJSNativeInstance {
+    #[inline(always)]
     pub unsafe fn construct(
         &mut self,
         numparams: tjs_int,
@@ -1310,10 +1429,12 @@ impl iTJSNativeInstance {
         unsafe { ((*self.vtable_).iTJSNativeInstance_Construct)(self, numparams, param, tjs_obj) }
     }
 
+    #[inline(always)]
     pub unsafe fn invalidate(&mut self) {
         unsafe { ((*self.vtable_).iTJSNativeInstance_Invalidate)(self) }
     }
 
+    #[inline(always)]
     pub unsafe fn destruct(&mut self) {
         unsafe { ((*self.vtable_).iTJSNativeInstance_Destruct)(self) }
     }
@@ -1385,12 +1506,84 @@ impl tTJSVariant {
         my
     }
 
+    pub fn change_closure_obj_this(&mut self, objthis: *mut iTJSDispatch2) {
+        type Type = extern "system" fn(*mut tTJSVariant, *mut iTJSDispatch2);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr3d4b725f0b4234d79524822e7c34486b,
+                "void tTJSVariant::ChangeClosureObjThis(iTJSDispatch2 *)\0",
+                Type
+            )
+        };
+        ptr(self, objthis)
+    }
+
+    pub fn typ_mut(&mut self) -> tTJSVariantType {
+        type Type = extern "system" fn(*mut tTJSVariant) -> tTJSVariantType;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr8fca7d3a123df1eacf228ba89f6a02ff,
+                "tTJSVariantType tTJSVariant::Type()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
     pub fn clear(&mut self) {
         type Type = extern "system" fn(s: *mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr58be195f96a36c158d638e3b0c79308b,
                 "void tTJSVariant::Clear()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn as_object_closure(&mut self) -> &mut tTJSVariantClosure {
+        type Type = extern "system" fn(*mut tTJSVariant) -> *mut tTJSVariantClosure;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtreaa4d5b1d186a807a63311ab6d5e16e4,
+                "tTJSVariantClosure & tTJSVariant::AsObjectClosure()\0",
+                Type
+            )
+        };
+        unsafe { &mut *ptr(self) }
+    }
+
+    pub fn to_object(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr246f30d208c1d3a4e2b558090f403734,
+                "void tTJSVariant::ToObject()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn to_string(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrc5a30d297c3a121879b1392bc6c604ef,
+                "void tTJSVariant::ToString()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn get_hint(&mut self) -> *mut tjs_uint32 {
+        type Type = extern "system" fn(*mut tTJSVariant) -> *mut tjs_uint32;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtre398f5aef0ab92bc1323f3b094722fb1,
+                "tjs_uint32 * tTJSVariant::GetHint()\0",
                 Type
             )
         };
@@ -1410,6 +1603,24 @@ impl tTJSVariant {
     }
 }
 
+impl From<&tTJSVariant> for tTJSVariant {
+    fn from(value: &tTJSVariant) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, ref_: *const tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtre8dbd4fe012262d9da831e0735aa33b3,
+                "tTJSVariant::tTJSVariant(const tTJSVariant &)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
 impl From<*mut iTJSDispatch2> for tTJSVariant {
     fn from(value: *mut iTJSDispatch2) -> Self {
         type Type = extern "system" fn(*mut tTJSVariant, ref_: *mut iTJSDispatch2);
@@ -1417,6 +1628,186 @@ impl From<*mut iTJSDispatch2> for tTJSVariant {
             import_func!(
                 TVPImportFuncPtrace6cce1353865d7376caca1f2124216,
                 "tTJSVariant::tTJSVariant(iTJSDispatch2 *)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
+impl From<(*mut iTJSDispatch2, *mut iTJSDispatch2)> for tTJSVariant {
+    fn from(value: (*mut iTJSDispatch2, *mut iTJSDispatch2)) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *mut iTJSDispatch2, *mut iTJSDispatch2);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr5055344aa8055bc238b79e5f88fc3300,
+                "tTJSVariant::tTJSVariant(iTJSDispatch2 *,iTJSDispatch2 *)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value.0, value.1);
+        my
+    }
+}
+
+impl From<*const tjs_char> for tTJSVariant {
+    fn from(value: *const tjs_char) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_char);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr8238c542b814acf1a83c00cced57ba26,
+                "tTJSVariant::tTJSVariant(const tjs_char *)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
+impl From<&tTJSString> for tTJSVariant {
+    fn from(value: &tTJSString) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrbd2a14ca8c345fd7f151b08d1792fb60,
+                "tTJSVariant::tTJSVariant(const tTJSString &)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value as *const _);
+        my
+    }
+}
+
+impl From<*const tjs_nchar> for tTJSVariant {
+    fn from(value: *const tjs_nchar) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_nchar);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr16d432f9f86738a7688cbfc9b12441ec,
+                "tTJSVariant::tTJSVariant(const tjs_nchar *)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
+impl From<(*const tjs_uint8, tjs_uint)> for tTJSVariant {
+    fn from(value: (*const tjs_uint8, tjs_uint)) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_uint8, tjs_uint);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr6dac00582b8ba529e548ef058c4e869e,
+                "tTJSVariant::tTJSVariant(const tjs_uint8 *,tjs_uint)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value.0, value.1);
+        my
+    }
+}
+
+impl From<bool> for tTJSVariant {
+    fn from(value: bool) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, bool);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr9193ae470b5efdfe617b5e94cd8f5da6,
+                "tTJSVariant::tTJSVariant(bool)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
+impl From<tjs_int32> for tTJSVariant {
+    fn from(value: tjs_int32) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, tjs_int32);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrec455b6ef0f5da178063db3875973260,
+                "tTJSVariant::tTJSVariant(tjs_int32)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
+impl From<tjs_int64> for tTJSVariant {
+    fn from(value: tjs_int64) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, tjs_int64);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtra56aaf685bd171b63b0ef3c894d80ecf,
+                "tTJSVariant::tTJSVariant(tjs_int64)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
+impl From<tjs_real> for tTJSVariant {
+    fn from(value: tjs_real) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, tjs_real);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr9a5fe199cebb9841f94ac0bb7a4a3b6a,
+                "tTJSVariant::tTJSVariant(tjs_real)\0",
+                Type
+            )
+        };
+        let mut my = tTJSVariant {
+            _base: tTJSVariant_S::default(),
+        };
+        ptr(&mut my, value);
+        my
+    }
+}
+
+impl From<*const *const tjs_uint8> for tTJSVariant {
+    fn from(value: *const *const tjs_uint8) -> Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const *const tjs_uint8);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr2acb76a1f86e34afc5fe934d406c6c4c,
+                "tTJSVariant::tTJSVariant(const tjs_uint8 * *)\0",
                 Type
             )
         };
@@ -1441,6 +1832,20 @@ impl Drop for tTJSVariant {
             import_func!(
                 TVPImportFuncPtr3a4d914ca7d24989c236ad223c002d49,
                 "tTJSVariant::~ tTJSVariant()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+}
+
+impl Into<*mut iTJSDispatch2> for &mut tTJSVariant {
+    fn into(self) -> *mut iTJSDispatch2 {
+        type Type = extern "system" fn(*mut tTJSVariant) -> *mut iTJSDispatch2;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr3206ef9b7a8013d6572decdea49e7e2e,
+                "tTJSVariant::operator iTJSDispatch2 *()\0",
                 Type
             )
         };

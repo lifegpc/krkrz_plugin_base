@@ -1,4 +1,4 @@
-use krkrz_plugin_base::{*, tp_stub::*};
+use krkrz_plugin_base::{tp_stub::*, *};
 
 #[unsafe(export_name = "V2Link")]
 unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
@@ -10,6 +10,10 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     let mut s = "[simple plugin] AddSign ".into();
     unsafe { TVPAddLog(&s) };
     s += "More";
+    unsafe { TVPAddLog(&s) };
+    s.assign(b"Byte String\0" as &[u8]);
+    unsafe { TVPAddLog(&s) };
+    s.assign("With assign");
     unsafe { TVPAddLog(&s) };
     0
 }

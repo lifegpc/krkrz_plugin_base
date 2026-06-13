@@ -10,7 +10,7 @@ fn main() {
         .allowlist_file(".*tp_stub\\.h")
         .blocklist_type("tTJSNativeInstance")
         .derive_default(true)
-        .no_default("tTJSVariant")
+        .no_default("tTJS(String|Variant)")
         .vtable_generation(true)
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate()

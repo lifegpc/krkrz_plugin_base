@@ -1590,6 +1590,96 @@ impl tTJSVariant {
         ptr(self)
     }
 
+    pub fn to_octet(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr0733b0ac80880897d327dc6f3b04ea9e,
+                "void tTJSVariant::ToOctet()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn to_integer(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr4cb055ed9d8ef71d1af10898965c940c,
+                "void tTJSVariant::ToInteger()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn to_real(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtref8d198596b7d3143d02ed4450ccefa1,
+                "void tTJSVariant::ToReal()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    #[inline(always)]
+    pub fn assign<T>(&mut self, rhs: T) -> &mut Self
+    where
+        Self: Assign<T>,
+    {
+        Assign::assign(self, rhs)
+    }
+
+    pub fn copy_ref(&mut self, ref_: &tTJSVariant) {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr679b215ff76a269871d5f325b981e561,
+                "void tTJSVariant::CopyRef(const tTJSVariant &)\0",
+                Type
+            )
+        };
+        ptr(self, ref_)
+    }
+
+    pub fn set_object(&mut self, ref_: *mut iTJSDispatch2) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *mut iTJSDispatch2) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr2f873b0ee1c6591ba28bc4b9c0e4c954,
+                "tTJSVariant & tTJSVariant::SetObject(iTJSDispatch2 *)\0",
+                Type
+            )
+        };
+        let p = ptr(self, ref_);
+        unsafe { &mut *p }
+    }
+
+    pub fn set_object2(
+        &mut self,
+        object: *mut iTJSDispatch2,
+        objthis: *mut iTJSDispatch2,
+    ) -> &mut Self {
+        type Type = extern "system" fn(
+            *mut tTJSVariant,
+            *mut iTJSDispatch2,
+            *mut iTJSDispatch2,
+        ) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtra583ffb56cdb2ede691e15053a8a165a,
+                "tTJSVariant & tTJSVariant::SetObject(iTJSDispatch2 *,iTJSDispatch2 *)\0",
+                Type
+            )
+        };
+        let p = ptr(self, object, objthis);
+        unsafe { &mut *p }
+    }
+
     pub fn as_object(&self) -> *mut iTJSDispatch2 {
         type Type = extern "system" fn(s: *const tTJSVariant) -> *mut iTJSDispatch2;
         let ptr = unsafe {
@@ -1850,5 +1940,212 @@ impl Into<*mut iTJSDispatch2> for &mut tTJSVariant {
             )
         };
         ptr(self)
+    }
+}
+
+impl Assign<&tTJSVariant> for tTJSVariant {
+    fn assign(&mut self, rhs: &tTJSVariant) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrd48ea419e040ffe8c20c1e86d80c9a5f,
+                "tTJSVariant & tTJSVariant::operator =(const tTJSVariant &)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<*mut iTJSDispatch2> for tTJSVariant {
+    fn assign(&mut self, rhs: *mut iTJSDispatch2) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *mut iTJSDispatch2) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr1039eff4a4443f9238438485a35a93a7,
+                "tTJSVariant & tTJSVariant::operator =(iTJSDispatch2 *)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<tTJSVariantClosure> for tTJSVariant {
+    fn assign(&mut self, rhs: tTJSVariantClosure) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, tTJSVariantClosure) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtre09ed277802c1b117e1908421448886d,
+                "tTJSVariant & tTJSVariant::operator =(tTJSVariantClosure)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<*mut tTJSVariantString> for tTJSVariant {
+    fn assign(&mut self, rhs: *mut tTJSVariantString) -> &mut Self {
+        type Type =
+            extern "system" fn(*mut tTJSVariant, *mut tTJSVariantString) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtre76dfb9e00f4a9d491117d815f30db7f,
+                "tTJSVariant & tTJSVariant::operator =(tTJSVariantString *)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<*mut tTJSVariantOctet> for tTJSVariant {
+    fn assign(&mut self, rhs: *mut tTJSVariantOctet) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *mut tTJSVariantOctet) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrb000dd8934508d8ec6d6ef976a6ff49b,
+                "tTJSVariant & tTJSVariant::operator =(tTJSVariantOctet *)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<&tTJSString> for tTJSVariant {
+    fn assign(&mut self, rhs: &tTJSString) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSString) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrd98ab5c968ebfde4e924901d09190774,
+                "tTJSVariant & tTJSVariant::operator =(const tTJSString &)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs as *const _);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<*const tjs_char> for tTJSVariant {
+    fn assign(&mut self, rhs: *const tjs_char) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_char) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr661e8c10d5d477e6823a840244937cd8,
+                "tTJSVariant & tTJSVariant::operator =(const tjs_char *)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<&[tjs_char]> for tTJSVariant {
+    fn assign(&mut self, rhs: &[tjs_char]) -> &mut Self {
+        self.assign(rhs.as_ptr())
+    }
+}
+
+impl Assign<*const tjs_nchar> for tTJSVariant {
+    fn assign(&mut self, rhs: *const tjs_nchar) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_nchar) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr6b39e70ea89c4f883689f51289029b69,
+                "tTJSVariant & tTJSVariant::operator =(const tjs_nchar *)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<&[tjs_nchar]> for tTJSVariant {
+    fn assign(&mut self, rhs: &[tjs_nchar]) -> &mut Self {
+        self.assign(rhs.as_ptr())
+    }
+}
+
+impl Assign<&[u8]> for tTJSVariant {
+    fn assign(&mut self, rhs: &[u8]) -> &mut Self {
+        self.assign(rhs.as_ptr() as *const i8)
+    }
+}
+
+impl Assign<&str> for tTJSVariant {
+    fn assign(&mut self, rhs: &str) -> &mut Self {
+        let mut encoded: Vec<_> = rhs.encode_utf16().collect();
+        encoded.push(0);
+        self.assign(encoded.as_ptr())
+    }
+}
+
+impl Assign<bool> for tTJSVariant {
+    fn assign(&mut self, rhs: bool) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, bool) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr4a18b1c0afe37b84e2b35a7fc07c4e0f,
+                "tTJSVariant & tTJSVariant::operator =(bool)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<tjs_int32> for tTJSVariant {
+    fn assign(&mut self, rhs: tjs_int32) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, tjs_int32) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr48b85c8774d91ca40b2992f0e452f19e,
+                "tTJSVariant & tTJSVariant::operator =(tjs_int32)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<tTVInteger> for tTJSVariant {
+    fn assign(&mut self, rhs: tTVInteger) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, tTVInteger) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr5ea8db9a9193fe6bab53baf2bee06b6b,
+                "tTJSVariant & tTJSVariant::operator =(const tTVInteger)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
+    }
+}
+
+impl Assign<tjs_real> for tTJSVariant {
+    fn assign(&mut self, rhs: tjs_real) -> &mut Self {
+        type Type = extern "system" fn(*mut tTJSVariant, tjs_real) -> *mut tTJSVariant;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr46b92626ff6894e993c4f193a129540b,
+                "tTJSVariant & tTJSVariant::operator =(tjs_real)\0",
+                Type
+            )
+        };
+        let re = ptr(self, rhs);
+        unsafe { &mut *re }
     }
 }

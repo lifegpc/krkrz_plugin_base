@@ -1,3 +1,4 @@
+//! Low level api for tp_stub
 #[allow(warnings)]
 mod generated;
 
@@ -228,6 +229,146 @@ impl tTJSString {
         Self: tTJSStringCompareIC<T>,
     {
         self.compare(rhs) == 0
+    }
+
+    pub fn get(&self, i: tjs_uint) -> tjs_char {
+        type Type = extern "system" fn(s: *const tTJSString, tjs_uint) -> tjs_char;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr564b37278b50f4e5597dff6540868d49,
+                "tjs_char tTJSString::operator [](tjs_uint) const\0",
+                Type
+            )
+        };
+        ptr(self, i)
+    }
+
+    pub fn as_lower_case(&self, dest: &mut tTJSString) {
+        type Type = extern "system" fn(s: *const tTJSString, *mut tTJSString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr890b3a4831b824653e919b4a5197358d,
+                "void tTJSString::AsLowerCase(tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, dest)
+    }
+
+    pub fn as_upper_case(&self, dest: &mut tTJSString) {
+        type Type = extern "system" fn(s: *const tTJSString, *mut tTJSString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr2dfa6c77c5051d160b8a06f540e0d68b,
+                "void tTJSString::AsUpperCase(tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, dest)
+    }
+
+    pub fn escape_c(&self, dest: &mut tTJSString) {
+        type Type = extern "system" fn(s: *const tTJSString, *mut tTJSString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr05f88567d510fd84659ccbf493f647ed,
+                "void tTJSString::EscapeC(tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, dest)
+    }
+
+    pub fn unescape_c(&self, dest: &mut tTJSString) {
+        type Type = extern "system" fn(s: *const tTJSString, *mut tTJSString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr7166b8f7bb9688c980e4fa172f06f30c,
+                "void tTJSString::UnescapeC(tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, dest)
+    }
+
+    #[inline(always)]
+    pub fn starts_with<T: ?Sized>(&self, string: &T) -> bool
+    where
+        Self: tTJSStringStartsWith<T>,
+    {
+        tTJSStringStartsWith::starts_with(self, string)
+    }
+
+    pub fn get_narrow_str_len(&self) -> tjs_int {
+        type Type = extern "system" fn(s: *const tTJSString) -> tjs_int;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtra57696ca0c157cd7d3cd4e58c1df957c,
+                "tjs_int tTJSString::GetNarrowStrLen() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn to_narrow_str(&self, dest: *mut tjs_nchar, destmaxlen: tjs_int) {
+        type Type = extern "system" fn(s: *const tTJSString, *mut tjs_nchar, tjs_int);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr1aea9f8a38bbb875b6d052f330da9178,
+                "void tTJSString::ToNarrowStr(tjs_nchar *,tjs_int) const\0",
+                Type
+            )
+        };
+        ptr(self, dest, destmaxlen)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr2d3b3d6e22ee139cda9eee47dc031945,
+                "bool tTJSString::IsEmpty() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn get_len(&self) -> tjs_int {
+        type Type = extern "system" fn(s: *const tTJSString) -> tjs_int;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr8ff49e56c3c4c566561dcdd5c9ecc4db,
+                "tjs_int tTJSString::GetLen() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn length(&self) -> tjs_int {
+        type Type = extern "system" fn(s: *const tTJSString) -> tjs_int;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr490b547e93e40082d0b83312467104f9,
+                "tjs_int tTJSString::length() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn get_last_char(&self) -> tjs_char {
+        type Type = extern "system" fn(s: *const tTJSString) -> tjs_char;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr2c1ef06748df47df52b586ac0fbc6a34,
+                "tjs_char tTJSString::GetLastChar() const\0",
+                Type
+            )
+        };
+        ptr(self)
     }
 }
 
@@ -668,5 +809,184 @@ impl tTJSStringCompareIC<str> for tTJSString {
     fn compare(&self, target: &str) -> tjs_int {
         let ty: Self = target.into();
         self.compare(&ty)
+    }
+}
+
+impl PartialOrd<tTJSString> for tTJSString {
+    fn partial_cmp(&self, other: &tTJSString) -> Option<std::cmp::Ordering> {
+        use std::cmp::Ordering::*;
+        if self == other {
+            Some(Equal)
+        } else if self.lt(other) {
+            Some(Less)
+        } else if self.gt(other) {
+            Some(Greater)
+        } else {
+            None
+        }
+    }
+
+    fn lt(&self, other: &tTJSString) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrbbde02fe30c8a6cadb7073174ea3a874,
+                "bool tTJSString::operator <(const tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, other)
+    }
+
+    fn gt(&self, other: &tTJSString) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrcc1c14f63867f90bc883de03e9212cbc,
+                "bool tTJSString::operator >(const tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, other)
+    }
+}
+
+impl Add<&tTJSString> for &tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: &tTJSString) -> Self::Output {
+        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> tTJSString;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr236e007b32bc2631b5f6dc1eda6be0a9,
+                "tTJSString tTJSString::operator +(const tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, rhs)
+    }
+}
+
+impl Add<&tTJSString> for tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: &tTJSString) -> Self::Output {
+        &self + rhs
+    }
+}
+
+impl Add<*const tjs_char> for &tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: *const tjs_char) -> Self::Output {
+        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> tTJSString;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrcfbb9809e0e6d954b2652856e935ced9,
+                "tTJSString tTJSString::operator +(const tjs_char *) const\0",
+                Type
+            )
+        };
+        ptr(self, rhs)
+    }
+}
+
+impl Add<*const tjs_char> for tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: *const tjs_char) -> Self::Output {
+        (&self).add(rhs)
+    }
+}
+
+impl Add<&[tjs_char]> for &tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: &[tjs_char]) -> Self::Output {
+        self + rhs.as_ptr()
+    }
+}
+
+impl Add<&[tjs_char]> for tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: &[tjs_char]) -> Self::Output {
+        &self + rhs.as_ptr()
+    }
+}
+
+impl Add<&str> for &tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: &str) -> Self::Output {
+        let ty: tTJSString = rhs.into();
+        self + &ty
+    }
+}
+
+impl Add<&str> for tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: &str) -> Self::Output {
+        &self + rhs
+    }
+}
+
+impl Add<tjs_char> for &tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: tjs_char) -> Self::Output {
+        type Type = extern "system" fn(s: *const tTJSString, tjs_char) -> tTJSString;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr60ee96ae4a7704340bef20fb35ba6ade,
+                "tTJSString tTJSString::operator +(tjs_char) const\0",
+                Type
+            )
+        };
+        ptr(self, rhs)
+    }
+}
+
+impl Add<tjs_char> for tTJSString {
+    type Output = tTJSString;
+    fn add(self, rhs: tjs_char) -> Self::Output {
+        (&self).add(rhs)
+    }
+}
+
+pub trait tTJSStringStartsWith<T: ?Sized> {
+    fn starts_with(&self, string: &T) -> bool;
+}
+
+impl tTJSStringStartsWith<tTJSString> for tTJSString {
+    fn starts_with(&self, string: &tTJSString) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrdd44464bd8430a5be5fef0cffcd97117,
+                "bool tTJSString::StartsWith(const tTJSString &) const\0",
+                Type
+            )
+        };
+        ptr(self, string)
+    }
+}
+
+impl tTJSStringStartsWith<*const tjs_char> for tTJSString {
+    fn starts_with(&self, string: &*const tjs_char) -> bool {
+        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> bool;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrb9456ecba8b7898d80d2e5caa64035c9,
+                "bool tTJSString::StartsWith(const tjs_char *) const\0",
+                Type
+            )
+        };
+        ptr(self, *string)
+    }
+}
+
+impl tTJSStringStartsWith<[tjs_char]> for tTJSString {
+    fn starts_with(&self, string: &[tjs_char]) -> bool {
+        self.starts_with(&string.as_ptr())
+    }
+}
+
+impl tTJSStringStartsWith<str> for tTJSString {
+    fn starts_with(&self, string: &str) -> bool {
+        let ty: Self = string.into();
+        self.starts_with(&ty)
     }
 }

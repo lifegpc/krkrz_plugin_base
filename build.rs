@@ -11,6 +11,7 @@ fn main() {
         .blocklist_type("tTJSNativeInstance")
         .derive_default(true)
         .no_default("tTJS(String|Variant|VariantString)")
+        .no_copy("tTJSVariantString")
         .vtable_generation(true)
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate()

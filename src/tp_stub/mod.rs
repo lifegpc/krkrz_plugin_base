@@ -3018,3 +3018,217 @@ impl Neg for &tTJSVariant {
         ptr(self)
     }
 }
+
+impl Clone for tTJSVariant {
+    fn clone(&self) -> Self {
+        Self::from(self)
+    }
+}
+
+impl tTJSVariantString {
+    pub fn add_ref(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariantString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr8dc9cef84191f79b38403a2070952fd4,
+                "void tTJSVariantString::AddRef()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn release(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariantString);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr1d42bd1e659b36886c20567497b7ee96,
+                "void tTJSVariantString::Release()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn set_string(&mut self, ref_: *const tjs_char, maxlen: tjs_int) {
+        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_char, tjs_int);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr0848fbdc7eeddb12c80bcd9c31383a64,
+                "void tTJSVariantString::SetString(const tjs_char *,tjs_int)\0",
+                Type
+            )
+        };
+        ptr(self, ref_, maxlen)
+    }
+
+    pub fn set_string_n(&mut self, ref_: *const tjs_nchar) {
+        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_nchar);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr1f1123c906c28ab6d16b6bef3f7ae978,
+                "void tTJSVariantString::SetString(const tjs_nchar *)\0",
+                Type
+            )
+        };
+        ptr(self, ref_)
+    }
+
+    pub fn alloc_buffer(&mut self, len: tjs_uint) {
+        type Type = extern "system" fn(*mut tTJSVariantString, tjs_uint);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrb84394e20cc73a90349cf5be4e783111,
+                "void tTJSVariantString::AllocBuffer(tjs_uint)\0",
+                Type
+            )
+        };
+        ptr(self, len)
+    }
+
+    pub fn reset_string(&mut self, ref_: *const tjs_char) {
+        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_char);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr76e0db3797851fe8ff90cf84780c50ad,
+                "void tTJSVariantString::ResetString(const tjs_char *)\0",
+                Type
+            )
+        };
+        ptr(self, ref_)
+    }
+
+    pub fn append_buffer(&mut self, applen: tjs_uint) {
+        type Type = extern "system" fn(*mut tTJSVariantString, tjs_uint);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr6616241156c22bced42cd9f2f647677e,
+                "void tTJSVariantString::AppendBuffer(tjs_uint)\0",
+                Type
+            )
+        };
+        ptr(self, applen)
+    }
+
+    pub fn append(&mut self, str_: *const tjs_char) {
+        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_char);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr1ace346a3dd546c66ad115a33d8cf693,
+                "void tTJSVariantString::Append(const tjs_char *)\0",
+                Type
+            )
+        };
+        ptr(self, str_)
+    }
+
+    pub fn append_len(&mut self, str_: *const tjs_char, applen: tjs_int) {
+        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_char, tjs_int);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr96fb9bbe33531d4268573355c658e165,
+                "void tTJSVariantString::Append(const tjs_char *,tjs_int)\0",
+                Type
+            )
+        };
+        ptr(self, str_, applen)
+    }
+
+    pub fn fix_length(&mut self) -> *mut tTJSVariantString {
+        type Type = extern "system" fn(*mut tTJSVariantString) -> *mut tTJSVariantString;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrc90b5737134c76f9ed0bb5da7cfaad8c,
+                "tTJSVariantString * tTJSVariantString::FixLength()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn get_hint(&mut self) -> *mut tjs_uint32 {
+        type Type = extern "system" fn(*mut tTJSVariantString) -> *mut tjs_uint32;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr070ed05259a265cabdd82bfedabdd638,
+                "tjs_uint32 * tTJSVariantString::GetHint()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn get_length(&self) -> tjs_int {
+        type Type = extern "system" fn(*const tTJSVariantString) -> tjs_int;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrb64741dc4544ed43c44ddb6d0eb838ea,
+                "tjs_int tTJSVariantString::GetLength() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn to_integer(&self) -> tTVInteger {
+        type Type = extern "system" fn(*const tTJSVariantString) -> tTVInteger;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr5b83e28b2d9ab0f75d7c7f6f61b5ded6,
+                "tTVInteger tTJSVariantString::ToInteger() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn to_real(&self) -> tTVReal {
+        type Type = extern "system" fn(*const tTJSVariantString) -> tTVReal;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrb948c9f43837efa489b0b91f3f675710,
+                "tTVReal tTJSVariantString::ToReal() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn to_number(&self, dest: &mut tTJSVariant) {
+        type Type = extern "system" fn(*const tTJSVariantString, *mut tTJSVariant);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr9bb70418d5f8f3207f1e555deb68165e,
+                "void tTJSVariantString::ToNumber(class tTJSVariant &) const\0",
+                Type
+            )
+        };
+        ptr(self, dest)
+    }
+
+    pub fn get_ref_count(&self) -> tjs_int {
+        type Type = extern "system" fn(*const tTJSVariantString) -> tjs_int;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrc66ab4868b743de9c0ba8b26c67b23da,
+                "tjs_int tTJSVariantString::GetRefCount() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+}
+
+impl Into<*const tjs_char> for &tTJSVariantString {
+    fn into(self) -> *const tjs_char {
+        type Type = extern "system" fn(*const tTJSVariantString) -> *const tjs_char;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr008b7e3a4c5bb23ee991f684a5064737,
+                "tTJSVariantString::operator const tjs_char *() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+}

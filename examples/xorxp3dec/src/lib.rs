@@ -24,7 +24,7 @@ unsafe extern "system" fn filter(info: *mut tTVPXP3ExtractionFilterInfo) {
         );
     }
     // Skip if filehash is 0
-    if info.FileHash == 0 {
+    if info.FileHash == 0 || info.Buffer.is_null() {
         return;
     }
     let buf =

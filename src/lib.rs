@@ -20,3 +20,26 @@ macro_rules! log {
         log(&format!($($arg)*));
     };
 }
+
+/// Throw exception message to TVP
+///
+/// This function never returns
+pub fn throw_exception_message(msg: &str) -> ! {
+    let mut data: Vec<_> = msg.encode_utf16().collect();
+    data.push(0);
+    unsafe {
+        TVPThrowExceptionMessage(data.as_ptr());
+        // TVPThrowExceptionMessage never returns
+        std::hint::unreachable_unchecked()
+    }
+}
+
+/// `print` like macro to throw exception message to TVP
+///
+/// This macro never returns
+#[macro_export]
+macro_rules! throw_exception_message {
+    ($($arg:tt)*) => {
+        throw_exception_message(&format!($($arg)*));
+    };
+}

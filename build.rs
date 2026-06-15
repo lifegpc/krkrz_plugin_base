@@ -12,6 +12,10 @@ fn main() {
         .derive_default(true)
         .no_default("tTJS(String|Variant|VariantString)")
         .no_copy("tTJSVariantString")
+        .override_abi(
+            bindgen::Abi::System,
+            "(tTVPXP3ArchiveExtractionFilter|tTVPWindowMessageReceiver)",
+        )
         .vtable_generation(true)
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .generate()

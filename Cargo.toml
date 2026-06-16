@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+windows = { version = "0.62", features = ["Win32_System_Com", "docs"], optional = true }
+
+[features]
+default = ["com"]
+com = ["windows"]
 
 [build-dependencies]
 bindgen = "0.72"

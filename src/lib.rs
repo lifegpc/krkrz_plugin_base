@@ -1,7 +1,13 @@
+#[cfg(feature = "com")]
+pub mod com;
 #[allow(non_snake_case, non_camel_case_types)]
 pub mod tp_stub;
 
 use tp_stub::*;
+#[cfg(feature = "com")]
+use windows::Win32::System::Com;
+#[cfg(feature = "com")]
+use windows::core::Interface;
 
 /// Log message to TVP
 ///
@@ -50,5 +56,29 @@ pub fn throw_null_access() -> ! {
         TJSThrowNullAccess();
         // TJSThrowNullAccess never returns
         std::hint::unreachable_unchecked()
+    }
+}
+
+#[cfg(feature = "com")]
+/// Create a [`IStream`](Com::IStream) from name.
+///
+/// `flags` - TJS_BS_* flags
+///
+/// ```no_run
+/// use krkrz_plugin_base::{com::*, tp_stub::*, *};
+/// use std::io::Read;
+/// if let Some(stream) = create_istream("test.txt", TJS_BS_READ as u32) {
+///     let mut stream = IStreamWrapper(stream);
+///     let mut text = String::new();
+///     stream.read_to_string(&mut text);
+/// }
+/// ```
+pub fn create_istream(name: &str, flags: u32) -> Option<Com::IStream> {
+    let name = ttstr::from(name);
+    let stream = unsafe { TVPCreateIStream(&name, flags) };
+    if stream.is_null() {
+        None
+    } else {
+        Some(unsafe { Com::IStream::from_raw(stream as *mut _) })
     }
 }

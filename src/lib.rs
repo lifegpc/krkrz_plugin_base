@@ -68,7 +68,7 @@ pub fn throw_null_access() -> ! {
 /// ```no_run
 /// use krkrz_plugin_base::{com::*, tp_stub::*, *};
 /// use std::io::Read;
-/// if let Some(stream) = create_istream("test.txt", TJS_BS_READ as u32) {
+/// if let Some(stream) = create_istream("test.txt", TJS_BS_READ) {
 ///     let mut stream = IStreamWrapper(stream);
 ///     let mut text = String::new();
 ///     stream.read_to_string(&mut text);

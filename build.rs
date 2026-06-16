@@ -1,3 +1,17 @@
+use bindgen::callbacks::{IntKind, ParseCallbacks};
+
+#[derive(Debug)]
+struct MyCallback {}
+
+impl ParseCallbacks for MyCallback {
+    fn int_macro(&self, name: &str, _value: i64) -> Option<IntKind> {
+        if name.starts_with("TJS_OP_") || name.starts_with("TJS_BS_") {
+            return Some(IntKind::U32);
+        }
+        None
+    }
+}
+
 fn main() {
     // let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let bindings = bindgen::Builder::default()
@@ -8,7 +22,8 @@ fn main() {
         .header("src/tp_stub/tp_stub.h") // 包含宏的头文件
         .generate_comments(true)
         .allowlist_file(".*tp_stub\\.h")
-        .blocklist_type("tTJSNativeInstance")
+        .blocklist_function("tTJSDispatch_.*")
+        .blocklist_type("tTJS(NativeInstance|Dispatch)")
         .derive_default(true)
         .no_default("tTJS(String|Variant|VariantString|VariantOctet|VariantClosure)")
         .no_copy("tTJS(VariantString|VariantClosure)")
@@ -18,6 +33,7 @@ fn main() {
         )
         .vtable_generation(true)
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
+        .parse_callbacks(Box::new(MyCallback {}))
         .generate()
         .expect("bindgen failed");
     bindings

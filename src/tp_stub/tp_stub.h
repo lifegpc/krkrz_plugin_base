@@ -37,7 +37,7 @@ typedef unsigned __int64 tjs_uint64;
 typedef int tjs_int;    /* at least 32bits */
 typedef unsigned int tjs_uint;    /* at least 32bits */
 
-typedef tjs_uint16 tjs_char;
+typedef wchar_t tjs_char;
 //#ifdef __cplusplus
 //typedef wchar_t tjs_char;
 //#else

@@ -3406,3 +3406,453 @@ impl From<(&tTJSVariantOctet, &tTJSVariantOctet)> for tTJSVariantOctet {
         Self::from((value.0 as *const _, value.1 as *const _))
     }
 }
+
+impl tTJSVariantClosure {
+    pub fn new(obj: *mut iTJSDispatch2, objthis: *mut iTJSDispatch2) -> Self {
+        Self {
+            _base: tTJSVariantClosure_S {
+                Object: obj,
+                ObjThis: objthis,
+            },
+        }
+    }
+
+    pub unsafe fn object(&mut self) -> Option<&mut iTJSDispatch2> {
+        let obj = self.Object;
+        if obj.is_null() {
+            None
+        } else {
+            Some(unsafe { &mut *obj })
+        }
+    }
+
+    pub unsafe fn obj_this(&mut self) -> Option<&mut iTJSDispatch2> {
+        let obj = self.ObjThis;
+        if obj.is_null() {
+            None
+        } else {
+            Some(unsafe { &mut *obj })
+        }
+    }
+
+    pub fn select_object_no_add_ref(&mut self) -> *mut iTJSDispatch2 {
+        if self.ObjThis.is_null() {
+            self.Object
+        } else {
+            self.ObjThis
+        }
+    }
+
+    pub fn add_ref(&mut self) {
+        unsafe {
+            self.object().map(|s| s.add_ref());
+            self.obj_this().map(|s| s.add_ref());
+        }
+    }
+
+    pub fn release(&mut self) {
+        unsafe {
+            self.object().map(|s| s.release());
+            self.obj_this().map(|s| s.release());
+        }
+    }
+
+    #[inline(always)]
+    fn select_objthis(&self, objthis: *mut iTJSDispatch2) -> *mut iTJSDispatch2 {
+        if !self.ObjThis.is_null() {
+            self.ObjThis
+        } else if !objthis.is_null() {
+            objthis
+        } else {
+            self.Object
+        }
+    }
+
+    pub unsafe fn func_call(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).func_call(
+                flag,
+                membername,
+                hint,
+                result,
+                numparams,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn func_call_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).func_call_by_num(
+                flag,
+                num,
+                result,
+                numparams,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn prop_get(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).prop_get(flag, membername, hint, result, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn prop_get_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).prop_get_by_num(flag, num, result, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn prop_set(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).prop_set(flag, membername, hint, param, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn prop_set_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).prop_set_by_num(flag, num, param, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn get_count(
+        &mut self,
+        result: *mut tjs_int,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).get_count(result, membername, hint, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn get_count_by_num(
+        &mut self,
+        result: *mut tjs_int,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).get_count_by_num(result, num, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn prop_set_by_vs(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *mut tTJSVariantString,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).prop_set_by_vs(flag, membername, param, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn enum_members(
+        &mut self,
+        flag: tjs_uint32,
+        callback: *mut tTJSVariantClosure,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).enum_members(flag, callback, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn delete_member(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).delete_member(flag, membername, hint, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn delete_member_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).delete_member_by_num(flag, num, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn invalidate(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).invalidate(flag, membername, hint, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn invalidate_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).invalidate_by_num(flag, num, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn is_valid(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).is_valid(flag, membername, hint, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn is_valid_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe { (*self.Object).is_valid_by_num(flag, num, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn create_new(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut *mut iTJSDispatch2,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).create_new(
+                flag,
+                membername,
+                hint,
+                result,
+                numparams,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn create_new_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut *mut iTJSDispatch2,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).create_new_by_num(
+                flag,
+                num,
+                result,
+                numparams,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn is_instance_of(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        classname: *const tjs_char,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).is_instance_of(
+                flag,
+                membername,
+                hint,
+                classname,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn is_instance_of_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        classname: *const tjs_char,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).is_instance_of_by_num(flag, num, classname, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn operation(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).operation(
+                flag,
+                membername,
+                hint,
+                result,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn operation_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            super::throw_null_access();
+        }
+        unsafe {
+            (*self.Object).operation_by_num(flag, num, result, param, self.select_objthis(objthis))
+        }
+    }
+}
+
+impl Deref for tTJSVariantClosure {
+    type Target = tTJSVariantClosure_S;
+    fn deref(&self) -> &Self::Target {
+        &self._base
+    }
+}
+
+impl Default for tTJSVariantClosure {
+    fn default() -> Self {
+        Self {
+            _base: tTJSVariantClosure_S {
+                Object: std::ptr::null_mut(),
+                ObjThis: std::ptr::null_mut(),
+            },
+        }
+    }
+}
+
+impl PartialEq for tTJSVariantClosure {
+    fn eq(&self, other: &Self) -> bool {
+        self.Object == other.Object && self.ObjThis == other.ObjThis
+    }
+}

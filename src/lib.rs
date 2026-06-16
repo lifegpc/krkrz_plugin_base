@@ -43,3 +43,12 @@ macro_rules! throw_exception_message {
         throw_exception_message(&format!($($arg)*));
     };
 }
+
+/// Throw null access error to TVP
+pub fn throw_null_access() -> ! {
+    unsafe {
+        TJSThrowNullAccess();
+        // TJSThrowNullAccess never returns
+        std::hint::unreachable_unchecked()
+    }
+}

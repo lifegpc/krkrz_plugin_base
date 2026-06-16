@@ -10,8 +10,8 @@ fn main() {
         .allowlist_file(".*tp_stub\\.h")
         .blocklist_type("tTJSNativeInstance")
         .derive_default(true)
-        .no_default("tTJS(String|Variant|VariantString|VariantOctet)")
-        .no_copy("tTJSVariantString")
+        .no_default("tTJS(String|Variant|VariantString|VariantOctet|VariantClosure)")
+        .no_copy("tTJS(VariantString|VariantClosure)")
         .override_abi(
             bindgen::Abi::System,
             "(tTVPXP3ArchiveExtractionFilter|tTVPWindowMessageReceiver)",

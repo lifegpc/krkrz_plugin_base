@@ -1,3 +1,4 @@
+#![cfg_attr(any(docsrs, feature = "unstable"), feature(doc_cfg))]
 #[cfg(feature = "com")]
 pub mod com;
 #[allow(non_snake_case, non_camel_case_types)]

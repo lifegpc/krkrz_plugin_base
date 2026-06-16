@@ -11,7 +11,7 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPAddLog(&s) };
     s += "More";
     unsafe { TVPAddLog(&s) };
-    s.assign(b"Byte String\0" as &[u8]);
+    s.assign(b"Byte String\0");
     unsafe { TVPAddLog(&s) };
     s.assign("With assign");
     unsafe { TVPAddLog(&s) };

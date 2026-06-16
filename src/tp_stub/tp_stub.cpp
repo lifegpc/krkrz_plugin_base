@@ -2196,3 +2196,72 @@ tjs_error Try_iTJSDispatch2_Reserved3(iTJSDispatch2 * _this)
 	TVPDoTryBlock(_Try_iTJSDispatch2_Reserved3, _CatchFuncCall, NULL, &arg);
 	return arg._ret;
 }
+
+tjs_uint64 tTJSBinaryStream::GetPosition() {
+	return Seek(0, SEEK_CUR);
+}
+
+void tTJSBinaryStream::SetPosition(tjs_uint64 pos) {
+	if(pos != Seek(pos, TJS_BS_SEEK_SET))
+		TVPThrowExceptionMessage(L"Failed to seek position.");
+}
+
+void tTJSBinaryStream::ReadBuffer(void *buffer, tjs_uint read_size)
+{
+	if(Read(buffer, read_size) != read_size)
+		TVPThrowExceptionMessage(L"Failed to read from stream.");
+}
+//---------------------------------------------------------------------------
+void tTJSBinaryStream::WriteBuffer(const void *buffer, tjs_uint write_size)
+{
+	if(Write(buffer, write_size) != write_size)
+		TVPThrowExceptionMessage(L"Failed to write to stream.");
+}
+//---------------------------------------------------------------------------
+tjs_uint64 tTJSBinaryStream::ReadI64LE()
+{
+#if TJS_HOST_IS_BIG_ENDIAN
+	tjs_uint8 buffer[8];
+	ReadBuffer(buffer, 8);
+	tjs_uint64 ret = 0;
+	for(tjs_int i=0; i<8; i++)
+		ret += (tjs_uint64)buffer[i]<<(i*8);
+	return ret;
+#else
+	tjs_uint64 temp;
+	ReadBuffer(&temp, 8);
+	return temp;
+#endif
+}
+//---------------------------------------------------------------------------
+tjs_uint32 tTJSBinaryStream::ReadI32LE()
+{
+#if TJS_HOST_IS_BIG_ENDIAN
+	tjs_uint8 buffer[4];
+	ReadBuffer(buffer, 4);
+	tjs_uint32 ret = 0;
+	for(tjs_int i=0; i<4; i++)
+		ret += (tjs_uint32)buffer[i]<<(i*8);
+	return ret;
+#else
+	tjs_uint32 temp;
+	ReadBuffer(&temp, 4);
+	return temp;
+#endif
+}
+//---------------------------------------------------------------------------
+tjs_uint16 tTJSBinaryStream::ReadI16LE()
+{
+#if TJS_HOST_IS_BIG_ENDIAN
+	tjs_uint8 buffer[2];
+	ReadBuffer(buffer, 2);
+	tjs_uint16 ret = 0;
+	for(tjs_int i=0; i<2; i++)
+		ret += (tjs_uint16)buffer[i]<<(i*8);
+	return ret;
+#else
+	tjs_uint16 temp;
+	ReadBuffer(&temp, 2);
+	return temp;
+#endif
+}

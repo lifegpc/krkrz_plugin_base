@@ -1066,6 +1066,12 @@ impl Assign<&[u8]> for tTJSString {
     }
 }
 
+impl<const N: usize> Assign<&[u8; N]> for tTJSString {
+    fn assign(&mut self, rhs: &[u8; N]) -> &mut Self {
+        self.assign(rhs as &[u8])
+    }
+}
+
 impl Assign<&str> for tTJSString {
     fn assign(&mut self, rhs: &str) -> &mut Self {
         let mut encoded: Vec<_> = rhs.encode_utf16().collect();
@@ -2630,6 +2636,12 @@ impl Assign<&[u8]> for tTJSVariant {
     }
 }
 
+impl<const N: usize> Assign<&[u8; N]> for tTJSVariant {
+    fn assign(&mut self, rhs: &[u8; N]) -> &mut Self {
+        self.assign(rhs as &[u8])
+    }
+}
+
 impl Assign<&str> for tTJSVariant {
     fn assign(&mut self, rhs: &str) -> &mut Self {
         let mut encoded: Vec<_> = rhs.encode_utf16().collect();
@@ -3230,5 +3242,167 @@ impl Into<*const tjs_char> for &tTJSVariantString {
             )
         };
         ptr(self)
+    }
+}
+
+impl tTJSVariantOctet {
+    pub fn add_ref(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariantOctet);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtrdbc9bc2e27068c8426b1c6a7f89424e0,
+                "void tTJSVariantOctet::AddRef()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn release(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariantOctet);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr5eeb98ca016123f57966457533bb639e,
+                "void tTJSVariantOctet::Release()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn get_length(&self) -> tjs_uint {
+        type Type = extern "system" fn(*const tTJSVariantOctet) -> tjs_uint;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr98fdc846d0b4a83412f3521f65bb98b4,
+                "tjs_uint tTJSVariantOctet::GetLength() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+
+    pub fn get_data(&self) -> *const tjs_uint8 {
+        type Type = extern "system" fn(*const tTJSVariantOctet) -> *const tjs_uint8;
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr3309591d3c7f6f688e81588f169dba21,
+                "const tjs_uint8 * tTJSVariantOctet::GetData() const\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+}
+
+impl Default for tTJSVariantOctet {
+    fn default() -> Self {
+        Self::from(b"")
+    }
+}
+
+impl Drop for tTJSVariantOctet {
+    fn drop(&mut self) {
+        type Type = extern "system" fn(*mut tTJSVariantOctet);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr08aef69683bcfe2a5c63d4c7866de8e9,
+                "tTJSVariantOctet::~ tTJSVariantOctet()\0",
+                Type
+            )
+        };
+        ptr(self)
+    }
+}
+
+impl From<(*const tjs_uint8, tjs_uint)> for tTJSVariantOctet {
+    fn from(value: (*const tjs_uint8, tjs_uint)) -> Self {
+        type Type =
+            extern "system" fn(*mut tTJSVariantOctet, data: *const tjs_uint8, length: tjs_uint);
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr8970ba46068ac74746c3e84299937d8f,
+                "tTJSVariantOctet::tTJSVariantOctet(const tjs_uint8 *,tjs_uint)\0",
+                Type
+            )
+        };
+        let mut my = Self {
+            _base: Default::default(),
+        };
+        ptr(&mut my, value.0, value.1);
+        my
+    }
+}
+
+impl From<&[tjs_uint8]> for tTJSVariantOctet {
+    fn from(value: &[tjs_uint8]) -> Self {
+        Self::from((value.as_ptr(), value.len() as tjs_uint))
+    }
+}
+
+impl<const N: usize> From<&[u8; N]> for tTJSVariantOctet {
+    fn from(bytes: &[u8; N]) -> Self {
+        Self::from(bytes as &[u8])
+    }
+}
+
+impl From<((*const tjs_uint8, tjs_uint), (*const tjs_uint8, tjs_uint))> for tTJSVariantOctet {
+    fn from(value: ((*const tjs_uint8, tjs_uint), (*const tjs_uint8, tjs_uint))) -> Self {
+        type Type = extern "system" fn(
+            *mut tTJSVariantOctet,
+            *const tjs_uint8,
+            tjs_uint,
+            *const tjs_uint8,
+            tjs_uint,
+        );
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtr438e27dcbb077284213eb4d7dcd43f8f,
+                "tTJSVariantOctet::tTJSVariantOctet(const tjs_uint8 *,tjs_uint,const tjs_uint8 *,tjs_uint)\0",
+                Type
+            )
+        };
+        let mut my = Self {
+            _base: Default::default(),
+        };
+        ptr(&mut my, value.0.0, value.0.1, value.1.0, value.1.1);
+        my
+    }
+}
+
+impl From<(&[tjs_uint8], &[tjs_uint8])> for tTJSVariantOctet {
+    fn from(value: (&[tjs_uint8], &[tjs_uint8])) -> Self {
+        Self::from((
+            (value.0.as_ptr(), value.0.len() as tjs_uint),
+            (value.1.as_ptr(), value.1.len() as tjs_uint),
+        ))
+    }
+}
+
+impl From<(*const tTJSVariantOctet, *const tTJSVariantOctet)> for tTJSVariantOctet {
+    fn from(value: (*const tTJSVariantOctet, *const tTJSVariantOctet)) -> Self {
+        type Type = extern "system" fn(
+            *mut tTJSVariantOctet,
+            *const tTJSVariantOctet,
+            *const tTJSVariantOctet,
+        );
+        let ptr = unsafe {
+            import_func!(
+                TVPImportFuncPtra98d712ca19a49afe07d0a7c5d064cef,
+                "tTJSVariantOctet::tTJSVariantOctet(const tTJSVariantOctet *,const tTJSVariantOctet *)\0",
+                Type
+            )
+        };
+        let mut my = Self {
+            _base: Default::default(),
+        };
+        ptr(&mut my, value.0, value.1);
+        my
+    }
+}
+
+impl From<(&tTJSVariantOctet, &tTJSVariantOctet)> for tTJSVariantOctet {
+    fn from(value: (&tTJSVariantOctet, &tTJSVariantOctet)) -> Self {
+        Self::from((value.0 as *const _, value.1 as *const _))
     }
 }

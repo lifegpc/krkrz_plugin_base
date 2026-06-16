@@ -10,7 +10,7 @@ fn main() {
         .allowlist_file(".*tp_stub\\.h")
         .blocklist_type("tTJSNativeInstance")
         .derive_default(true)
-        .no_default("tTJS(String|Variant|VariantString)")
+        .no_default("tTJS(String|Variant|VariantString|VariantOctet)")
         .no_copy("tTJSVariantString")
         .override_abi(
             bindgen::Abi::System,

@@ -1500,6 +1500,9 @@ impl tTJSNativeInstance {
         let hr = self_.ni.construct(numparams, param, tjs_obj);
         if TJS_SUCCEEDED(hr) {
             unsafe { TVPPluginGlobalRefCount += 1 };
+        } else {
+            // Workround fix leak when error returned from construct
+            let _boxed = unsafe { Box::from_raw(this as *mut tTJSNativeInstance) };
         }
         hr
     }

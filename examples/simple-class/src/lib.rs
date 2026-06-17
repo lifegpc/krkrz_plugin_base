@@ -45,7 +45,7 @@ unsafe extern "C" fn ncm_finalize(
 
 static mut SIMPLE_CLASS_CID: tjs_int32 = -1;
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
-generate_origin_static_block!(simple_class, n_class);
+generate_origin_static_block!(simple_class, n_class, my_point);
 
 unsafe extern "C" fn ncm_construct(
     _result: *mut tTJSVariant,
@@ -127,7 +127,7 @@ fn create_native_class() -> *mut iTJSDispatch2 {
 
 struct NClass {}
 
-#[TjsClass]
+#[Tjs2Class]
 impl NClass {
     fn new() -> Self {
         log!("NClass: created");
@@ -145,12 +145,34 @@ impl Drop for NClass {
     }
 }
 
+struct MyPoint {
+    x: i64,
+    y: i64,
+}
+
+#[Tjs2Class]
+impl MyPoint {
+    fn new(x: Option<i64>, y: Option<i64>) -> Self {
+        Self {
+            x: x.unwrap_or_default(),
+            y: y.unwrap_or_default(),
+        }
+    }
+}
+
+impl Drop for MyPoint {
+    fn drop(&mut self) {
+        log!("MyPoint: Dropped x={} y={}", self.x, self.y);
+    }
+}
+
 #[unsafe(export_name = "V2Link")]
 unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
     let simple_class = create_native_class();
     let n_class = NClass::create_native_class().1;
-    register_var!(simple_class, n_class);
+    let my_point = MyPoint::create_native_class().1;
+    register_var!(simple_class, n_class, my_point);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -161,7 +183,7 @@ unsafe extern "system" fn v2_unlink() -> i32 {
         log!("[simple-class]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    unregister_var!(simple_class, n_class);
+    unregister_var!(simple_class, n_class, my_point);
     log!("[simple-class]unlinked plugin");
     unsafe { TVPUninitImportStub() };
     0

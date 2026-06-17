@@ -2236,6 +2236,44 @@ impl tTJSVariant {
         };
         ptr(self)
     }
+
+    #[allow(non_upper_case_globals)]
+    pub fn is_void(&self) -> bool {
+        matches!(self.typ(), tTJSVariantType_tvtVoid)
+    }
+
+    #[allow(non_upper_case_globals)]
+    pub fn is_string(&self) -> bool {
+        matches!(self.typ(), tTJSVariantType_tvtString)
+    }
+
+    #[allow(non_upper_case_globals)]
+    pub fn is_object(&self) -> bool {
+        matches!(self.typ(), tTJSVariantType_tvtObject)
+    }
+
+    #[allow(non_upper_case_globals)]
+    pub fn is_integer(&self) -> bool {
+        matches!(self.typ(), tTJSVariantType_tvtInteger)
+    }
+
+    #[allow(non_upper_case_globals)]
+    pub fn is_real(&self) -> bool {
+        matches!(self.typ(), tTJSVariantType_tvtReal)
+    }
+
+    #[allow(non_upper_case_globals)]
+    pub fn is_octet(&self) -> bool {
+        matches!(self.typ(), tTJSVariantType_tvtOctet)
+    }
+
+    #[allow(non_upper_case_globals)]
+    pub fn can_as_integer(&self) -> bool {
+        !matches!(
+            self.typ(),
+            tTJSVariantType_tvtOctet | tTJSVariantType_tvtObject
+        )
+    }
 }
 
 impl From<&tTJSVariant> for tTJSVariant {

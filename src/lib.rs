@@ -1,6 +1,7 @@
 #![cfg_attr(any(docsrs, feature = "unstable"), feature(doc_cfg))]
 #[cfg(feature = "com")]
 pub mod com;
+pub mod param;
 #[allow(non_snake_case, non_camel_case_types)]
 pub mod tp_stub;
 
@@ -11,6 +12,7 @@ use windows::Win32::System::Com;
 use windows::core::Interface;
 
 pub use krkrz_plugin_base_macros::*;
+pub use param::TjsParam;
 
 /// Log message to TVP
 ///

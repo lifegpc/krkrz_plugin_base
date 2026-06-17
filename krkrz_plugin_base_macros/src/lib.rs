@@ -336,9 +336,184 @@ fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
     new_class.or(first_class)
 }
 
+fn peel_type(ty: &syn::Type) -> &syn::Type {
+    match ty {
+        syn::Type::Group(group) => peel_type(&group.elem),
+        syn::Type::Paren(paren) => peel_type(&paren.elem),
+        other => other,
+    }
+}
+
+fn extract_option_inner_type(ty: &syn::Type) -> Option<&syn::Type> {
+    use syn::{GenericArgument, PathArguments, Type, TypePath};
+
+    let inner = peel_type(ty);
+    if let Type::Path(TypePath { qself: None, path }) = inner {
+        if let Some(segment) = path.segments.last() {
+            if segment.ident == "Option" {
+                if let PathArguments::AngleBracketed(ref args) = segment.arguments {
+                    if args.args.len() == 1 {
+                        if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
+                            return Some(inner_ty);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn is_option_type(ty: &syn::Type) -> bool {
+    extract_option_inner_type(ty).is_some()
+}
+
+fn extract_result_inner_type(ty: &syn::Type) -> Option<&syn::Type> {
+    use syn::{GenericArgument, PathArguments, Type, TypePath};
+
+    let inner = peel_type(ty);
+    if let Type::Path(TypePath { qself: None, path }) = inner {
+        if let Some(segment) = path.segments.last() {
+            if segment.ident == "Result" {
+                if let PathArguments::AngleBracketed(ref args) = segment.arguments {
+                    if args.args.len() == 1 {
+                        if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
+                            return Some(inner_ty);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn is_result_type(ty: &syn::Type) -> bool {
+    extract_result_inner_type(ty).is_some()
+}
+
+fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStream {
+    use syn::{Pat, ReturnType};
+    let mut min_args = 0;
+    for (i, arg) in f.sig.inputs.iter().enumerate() {
+        let t = match arg {
+            FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
+            FnArg::Typed(t) => t,
+        };
+        if !is_option_type(&t.ty) {
+            min_args = i + 1;
+        }
+    }
+    let streams: Vec<_> = f
+        .sig
+        .inputs
+        .iter()
+        .enumerate()
+        .map(|(i, arg)| {
+            let t = match arg {
+                FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
+                FnArg::Typed(t) => t,
+            };
+            let is_option = is_option_type(&t.ty);
+            let name = match t.pat.as_ref() {
+                Pat::Ident(idt) => idt.ident.clone(),
+                _ => panic!("Unsupported name decalre of argument."),
+            };
+            if is_option {
+                quote! {
+                    let #name = if numparams <= (#i as tjs_int) {
+                        None
+                    } else {
+                        let p = unsafe { *param.add(#i) };
+                        if p.is_null() {
+                            None
+                        } else {
+                            let p = unsafe { &mut *p };
+                            if p.is_void() {
+                                None
+                            } else {
+                                match TjsParam::to_param(p) {
+                                    Ok(t) => Some(t),
+                                    Err(e) => {
+                                        log!("Failed to convert param to specify type: {}", e);
+                                        return Err(TJS_E_INVALIDPARAM);
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }
+            } else {
+                quote! {
+                    let p = unsafe { *param.add(#i) };
+                    let #name = if p.is_null() {
+                        throw_null_access();
+                    } else {
+                        let p = unsafe { &mut *p };
+                        match TjsParam::to_param(p) {
+                            Ok(t) => t,
+                            Err(e) => {
+                                log!("Failed to convert param to specify type: {}", e);
+                                return Err(TJS_E_INVALIDPARAM);
+                            }
+                        }
+                    };
+                }
+            }
+        })
+        .collect();
+    let args: Vec<_> = f
+        .sig
+        .inputs
+        .iter()
+        .map(|arg| {
+            let t = match arg {
+                FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
+                FnArg::Typed(t) => t,
+            };
+            let name = match t.pat.as_ref() {
+                Pat::Ident(idt) => idt.ident.clone(),
+                _ => panic!("Unsupported name decalre of argument."),
+            };
+            quote!(#name,)
+        })
+        .collect();
+    let name = f.sig.ident.clone();
+    let output_type = match &f.sig.output {
+        ReturnType::Default => panic!("constructor mut return something."),
+        ReturnType::Type(_, ty) => ty,
+    };
+    let result = if is_result_type(&output_type) {
+        quote!(
+            let re = match re {
+                Ok(re) => re,
+                Err(e) => {
+                    log!("Failed to construct object: {}", e);
+                    return Err(TJS_E_FAIL);
+                }
+            };
+        )
+    } else {
+        quote!()
+    };
+    let min_args = min_args;
+    quote! {
+        if numparams < (#min_args as tjs_int) {
+            return Err(TJS_E_BADPARAMCOUNT);
+        }
+        if numparams > 0 && param.is_null() {
+            throw_null_access();
+        }
+        #(#streams)*
+        let re = #self_ty::#name(#(#args)*);
+        #result
+        Ok(Box::new(re))
+    }
+}
+
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn TjsClass(_attrs: TokenStream, input: TokenStream) -> TokenStream {
+pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemImpl);
     let attrs = GlobalTjsAttributes::parse(&input.attrs).unwrap();
     let class_name = attrs.class_name.clone().unwrap_or_else(|| {
@@ -349,11 +524,7 @@ pub fn TjsClass(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     });
     let self_ty = input.self_ty.clone();
     let constructor = find_constructor(&input.items).expect("No constructor function was found.");
-    let name = constructor.sig.ident.clone();
-    // #TODO: Error check and arguments seriailze.
-    let constructor = quote! {
-        Ok(Box::new(#self_ty::#name()))
-    };
+    let main_constructor = gen_constructor(constructor, &self_ty);
     let invalidate = input
         .items
         .iter()
@@ -382,7 +553,7 @@ pub fn TjsClass(_attrs: TokenStream, input: TokenStream) -> TokenStream {
         static mut #classid_name: i32 = 0;
         impl krkrz_plugin_base::Tjs2Class for #self_ty {
             fn create_native_class() -> (i32, *mut krkrz_plugin_base::tp_stub::iTJSDispatch2) {
-                use krkrz_plugin_base::tp_stub::*;
+                use krkrz_plugin_base::{tp_stub::*, *};
                 #[repr(C)]
                 struct NativeInstatce {
                     base: iTJSNativeInstance,
@@ -402,7 +573,7 @@ pub fn TjsClass(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         Box::into_raw(boxed) as *mut iTJSNativeInstance
                     }
                     fn constructor(numparams: tjs_int, param: *mut *mut tTJSVariant, tjs_obj: *mut iTJSDispatch2) -> Result<Box<#self_ty>, i32> {
-                        #constructor
+                        #main_constructor
                     }
                     unsafe extern "C" fn construct(
                         this: *mut iTJSNativeInstance,
@@ -500,7 +671,7 @@ pub fn TjsClass(_attrs: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-/// This macro attribute do nothing. Check [tjs_class] instead.
+/// This macro attribute do nothing. Check [Tjs2Class] instead.
 pub fn tjs(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     input
 }

@@ -58,12 +58,26 @@ unsafe extern "C" fn ncm_construct(
     let hr =
         unsafe { (*tjs_obj).native_instance_support(0x00000002, SIMPLE_CLASS_CID, &mut _this) };
     if TJS_FAILED(hr) {
-        return hr;
+        return TJS_E_NATIVECLASSCRASH;
     }
     if _this.is_null() {
         return TJS_E_NATIVECLASSCRASH;
     }
     unsafe { (*_this).construct(numparams, param, tjs_obj) }
+}
+
+unsafe extern "C" fn ncm_from(
+    result: *mut tTJSVariant,
+    _numparams: tjs_int,
+    _param: *mut *mut tTJSVariant,
+    _tjs_obj: *mut iTJSDispatch2,
+) -> tjs_error {
+    log!("[simple-class]ncm_from");
+    let data = ttstr::from("return new SimpleClass();");
+    unsafe {
+        TVPExecuteScript(&data, result);
+    }
+    0
 }
 
 fn create_native_class() -> *mut iTJSDispatch2 {
@@ -94,6 +108,18 @@ fn create_native_class() -> *mut iTJSDispatch2 {
             name,
             tTJSNativeInstanceType_nitClass,
             0,
+        );
+    }
+    let fname = ttstr::from("from");
+    let fname = fname.c_str();
+    unsafe {
+        TJSNativeClassRegisterNCM(
+            classobj,
+            fname,
+            TJSCreateNativeClassConstructor(Some(ncm_from)) as *mut _,
+            name,
+            tTJSNativeInstanceType_nitClass,
+            TJS_STATICMEMBER,
         );
     }
     classobj as *mut iTJSDispatch2

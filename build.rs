@@ -8,6 +8,9 @@ impl ParseCallbacks for MyCallback {
         if name.starts_with("TJS_OP_") || name.starts_with("TJS_BS_") {
             return Some(IntKind::U32);
         }
+        if name.starts_with("TJS_") && name.ends_with("MEMBER") {
+            return Some(IntKind::U32);
+        }
         None
     }
 }

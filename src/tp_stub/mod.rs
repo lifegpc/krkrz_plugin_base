@@ -1469,6 +1469,32 @@ pub trait TJSNativeInstance {
         TJS_S_OK
     }
     fn invalidate(&mut self) {}
+    fn method(
+        &mut self,
+        _name: &str,
+        _result: *mut tTJSVariant,
+        _numparams: tjs_int,
+        _param: *mut *mut tTJSVariant,
+        _objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        TJS_E_MEMBERNOTFOUND
+    }
+    fn property_get(
+        &mut self,
+        _name: &str,
+        _result: *mut tTJSVariant,
+        _objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        TJS_E_MEMBERNOTFOUND
+    }
+    fn property_set(
+        &mut self,
+        _name: &str,
+        _param: *mut tTJSVariant,
+        _objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        TJS_E_MEMBERNOTFOUND
+    }
 }
 
 #[repr(C)]

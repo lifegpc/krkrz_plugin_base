@@ -1497,6 +1497,7 @@ impl tTJSNativeInstance {
         tjs_obj: *mut iTJSDispatch2,
     ) -> tjs_error {
         let self_ = unsafe { &mut *(this as *mut tTJSNativeInstance) };
+        unsafe { TVPPluginGlobalRefCount += 1 };
         self_.ni.construct(numparams, param, tjs_obj)
     }
     unsafe extern "C" fn invalidate(this: *mut iTJSNativeInstance) {
@@ -1505,6 +1506,7 @@ impl tTJSNativeInstance {
     }
     unsafe extern "C" fn destruct(this: *mut iTJSNativeInstance) {
         let _box = unsafe { Box::from_raw(this as *mut tTJSNativeInstance) };
+        unsafe { TVPPluginGlobalRefCount -= 1 };
     }
 }
 

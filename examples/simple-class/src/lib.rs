@@ -12,6 +12,12 @@ impl SimpleClass {
     }
 }
 
+impl Drop for SimpleClass {
+    fn drop(&mut self) {
+        log!("[simple-class]Dropped")
+    }
+}
+
 impl TJSNativeInstance for SimpleClass {
     fn construct(
         &mut self,
@@ -20,10 +26,10 @@ impl TJSNativeInstance for SimpleClass {
         _tjs_obj: *mut iTJSDispatch2,
     ) -> tjs_error {
         log!("[simple-class]Construct: {numparams}");
-        TJS_S_OK
+        if numparams == 1 { TJS_E_FAIL } else { TJS_S_OK }
     }
     fn invalidate(&mut self) {
-        log!("[simple-class]Deconstruct");
+        log!("[simple-class]invalidate");
     }
 }
 

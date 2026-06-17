@@ -85,3 +85,7 @@ pub fn create_istream(name: &str, flags: u32) -> Option<Com::IStream> {
         Some(unsafe { Com::IStream::from_raw(stream as *mut _) })
     }
 }
+
+pub trait Tjs2Class {
+    fn create_native_class() -> (i32, *mut iTJSDispatch2);
+}

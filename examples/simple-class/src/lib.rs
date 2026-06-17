@@ -45,7 +45,7 @@ unsafe extern "C" fn ncm_finalize(
 
 static mut SIMPLE_CLASS_CID: tjs_int32 = -1;
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
-generate_origin_static_block!(simple_class);
+generate_origin_static_block!(simple_class, n_class);
 
 unsafe extern "C" fn ncm_construct(
     _result: *mut tTJSVariant,
@@ -125,11 +125,32 @@ fn create_native_class() -> *mut iTJSDispatch2 {
     classobj as *mut iTJSDispatch2
 }
 
+struct NClass {}
+
+#[TjsClass]
+impl NClass {
+    fn new() -> Self {
+        log!("NClass: created");
+        Self {}
+    }
+
+    fn invalidate(&self) {
+        log!("NClass: invalidate");
+    }
+}
+
+impl Drop for NClass {
+    fn drop(&mut self) {
+        log!("NClass: Dropped");
+    }
+}
+
 #[unsafe(export_name = "V2Link")]
 unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
     let simple_class = create_native_class();
-    register_var!(simple_class);
+    let n_class = NClass::create_native_class().1;
+    register_var!(simple_class, n_class);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -140,7 +161,7 @@ unsafe extern "system" fn v2_unlink() -> i32 {
         log!("[simple-class]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    unregister_var!(simple_class);
+    unregister_var!(simple_class, n_class);
     log!("[simple-class]unlinked plugin");
     unsafe { TVPUninitImportStub() };
     0

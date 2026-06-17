@@ -2,9 +2,10 @@ use convert_case::{Case, Casing, ccase};
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Error, Ident, LitStr,
+    Attribute, Error, FnArg, Ident, ImplItem, ImplItemFn, ItemImpl, LitStr,
     parse::{Parse, ParseStream, discouraged::Speculative},
     parse_macro_input,
+    spanned::Spanned,
     token::{Comma, Eq},
 };
 
@@ -232,4 +233,274 @@ pub fn unregister_var(input: TokenStream) -> TokenStream {
         }
     }};
     stream.into()
+}
+
+#[derive(Default)]
+struct GlobalTjsAttributes {
+    class_name: Option<LitStr>,
+}
+
+impl GlobalTjsAttributes {
+    fn parse(attrs: &[Attribute]) -> syn::Result<Self> {
+        let mut data = Self::default();
+        for attr in attrs {
+            if attr.path().is_ident("tjs") {
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("class_name") {
+                        let value = meta.value()?;
+                        let s: LitStr = value.parse()?;
+                        data.class_name = Some(s);
+                        Ok(())
+                    } else {
+                        Err(meta.error("unsupported tjs attribute for impl block"))
+                    }
+                })?;
+            }
+        }
+        Ok(data)
+    }
+}
+
+#[derive(Default)]
+struct FnTjsAttributes {
+    constructor: bool,
+    skip: bool,
+}
+
+impl FnTjsAttributes {
+    fn parse(attrs: &[Attribute]) -> syn::Result<Self> {
+        let mut data = Self::default();
+        for attr in attrs {
+            if attr.path().is_ident("tjs") {
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("constructor") {
+                        data.constructor = true;
+                        Ok(())
+                    } else if meta.path.is_ident("skip") {
+                        data.skip = true;
+                        Ok(())
+                    } else {
+                        Err(meta.error("unsupported tjs attribute for impl block"))
+                    }
+                })?;
+            }
+        }
+        Ok(data)
+    }
+}
+
+fn get_class_name(ty: &syn::Type) -> syn::Result<String> {
+    match ty {
+        syn::Type::Path(p) => Ok(p
+            .path
+            .segments
+            .last()
+            .ok_or_else(|| syn::Error::new(ty.span(), "Failed to get class name from self type."))?
+            .ident
+            .to_string()),
+        _ => Err(syn::Error::new(
+            ty.span(),
+            "Failed to get class name from self type.",
+        )),
+    }
+}
+
+fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
+    let mut new_class = None;
+    let mut first_class = None;
+    for item in items {
+        match item {
+            ImplItem::Fn(f) => {
+                let attr = FnTjsAttributes::parse(&f.attrs).unwrap();
+                if attr.skip {
+                    continue;
+                }
+                if attr.constructor {
+                    return Some(f);
+                }
+                if f.sig
+                    .inputs
+                    .first()
+                    .is_some_and(|f| matches!(f, FnArg::Receiver(_)))
+                {
+                    continue;
+                }
+                if f.sig.ident == "new" {
+                    new_class = Some(f);
+                }
+                first_class.get_or_insert(f);
+            }
+            _ => {}
+        }
+    }
+    new_class.or(first_class)
+}
+
+#[proc_macro_attribute]
+#[allow(non_snake_case)]
+pub fn TjsClass(_attrs: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as ItemImpl);
+    let attrs = GlobalTjsAttributes::parse(&input.attrs).unwrap();
+    let class_name = attrs.class_name.clone().unwrap_or_else(|| {
+        LitStr::new(
+            &get_class_name(&input.self_ty).unwrap(),
+            input.self_ty.span(),
+        )
+    });
+    let self_ty = input.self_ty.clone();
+    let constructor = find_constructor(&input.items).expect("No constructor function was found.");
+    let name = constructor.sig.ident.clone();
+    // #TODO: Error check and arguments seriailze.
+    let constructor = quote! {
+        Ok(Box::new(#self_ty::#name()))
+    };
+    let invalidate = input
+        .items
+        .iter()
+        .filter_map(|s| match s {
+            ImplItem::Fn(s) => {
+                if s.sig.ident == "invalidate" {
+                    let attr = FnTjsAttributes::parse(&s.attrs).unwrap();
+                    if attr.skip {
+                        return None;
+                    }
+                    Some(quote! { s.invalidate() })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+        .next()
+        .unwrap_or_default();
+    let classid_name = Ident::new(
+        &format!("CID_{}", ccase!(constant, &class_name.value())),
+        class_name.span(),
+    );
+    let stream = quote! {
+        #input
+        static mut #classid_name: i32 = 0;
+        impl krkrz_plugin_base::Tjs2Class for #self_ty {
+            fn create_native_class() -> (i32, *mut krkrz_plugin_base::tp_stub::iTJSDispatch2) {
+                use krkrz_plugin_base::tp_stub::*;
+                #[repr(C)]
+                struct NativeInstatce {
+                    base: iTJSNativeInstance,
+                    inner: Option<Box<#self_ty>>,
+                }
+                impl NativeInstatce {
+                    unsafe extern "C" fn new() -> *mut iTJSNativeInstance {
+                        static VTABLE: iTJSNativeInstance__bindgen_vtable = iTJSNativeInstance__bindgen_vtable {
+                            iTJSNativeInstance_Construct: NativeInstatce::construct,
+                            iTJSNativeInstance_Invalidate: NativeInstatce::invalidate,
+                            iTJSNativeInstance_Destruct: NativeInstatce::destruct,
+                        };
+                        let boxed = Box::new(Self {
+                            base: iTJSNativeInstance { vtable_: &VTABLE },
+                            inner: None,
+                        });
+                        Box::into_raw(boxed) as *mut iTJSNativeInstance
+                    }
+                    fn constructor(numparams: tjs_int, param: *mut *mut tTJSVariant, tjs_obj: *mut iTJSDispatch2) -> Result<Box<#self_ty>, i32> {
+                        #constructor
+                    }
+                    unsafe extern "C" fn construct(
+                        this: *mut iTJSNativeInstance,
+                        numparams: tjs_int,
+                        param: *mut *mut tTJSVariant,
+                        tjs_obj: *mut iTJSDispatch2,
+                    ) -> tjs_error {
+                        let self_ = unsafe { &mut *(this as *mut NativeInstatce) };
+                        let hr = match Self::constructor(numparams, param, tjs_obj) {
+                            Ok(data) => {
+                                self_.inner = Some(data);
+                                0
+                            }
+                            Err(err) => {
+                                err
+                            }
+                        };
+                        if TJS_SUCCEEDED(hr) {
+                            unsafe { TVPPluginGlobalRefCount += 1 };
+                        } else {
+                            // Workround fix leak when error returned from construct
+                            let _boxed = unsafe { Box::from_raw(this as *mut tTJSNativeInstance) };
+                        }
+                        hr
+                    }
+                    unsafe extern "C" fn invalidate(this: *mut iTJSNativeInstance) {
+                        let self_ = unsafe { &mut *(this as *mut NativeInstatce) };
+                        if let Some(s) = self_.inner.as_mut() {
+                            #invalidate
+                        }
+                    }
+                    unsafe extern "C" fn destruct(this: *mut iTJSNativeInstance) {
+                        let _box = unsafe { Box::from_raw(this as *mut NativeInstatce) };
+                        unsafe { TVPPluginGlobalRefCount -= 1 };
+                    }
+                }
+                let classname = ttstr::from(#class_name);
+                let classobj =
+                    unsafe { TJSCreateNativeClassForPlugin(&classname as *const _, Some(NativeInstatce::new)) }
+                        as *mut tTJSNativeClass;
+                let name = classname.c_str();
+                let classid = unsafe { TJSRegisterNativeClass(name) };
+                unsafe { #classid_name = classid };
+                unsafe { TJSNativeClassSetClassID(classobj, classid); }
+                unsafe extern "C" fn ncm_construct(
+                    _result: *mut tTJSVariant,
+                    numparams: tjs_int,
+                    param: *mut *mut tTJSVariant,
+                    tjs_obj: *mut iTJSDispatch2,
+                ) -> tjs_error {
+                    let mut _this: *mut iTJSNativeInstance = std::ptr::null_mut();
+                    let hr =
+                        unsafe { (*tjs_obj).native_instance_support(0x00000002, #classid_name, &mut _this) };
+                    if TJS_FAILED(hr) {
+                        return TJS_E_NATIVECLASSCRASH;
+                    }
+                    if _this.is_null() {
+                        return TJS_E_NATIVECLASSCRASH;
+                    }
+                    unsafe { (*_this).construct(numparams, param, tjs_obj) }
+                }
+                unsafe extern "C" fn ncm_finalize(
+                    _result: *mut tTJSVariant,
+                    _numparams: tjs_int,
+                    _param: *mut *mut tTJSVariant,
+                    _tjs_obj: *mut iTJSDispatch2,
+                ) -> tjs_error {
+                    TJS_S_OK
+                }
+                let fnname = ttstr::from("finalize");
+                let fname = fnname.c_str();
+                unsafe {
+                    TJSNativeClassRegisterNCM(
+                        classobj,
+                        fname,
+                        TJSCreateNativeClassMethod(Some(ncm_finalize)) as *mut _,
+                        name,
+                        tTJSNativeInstanceType_nitMethod,
+                        0,
+                    );
+                    TJSNativeClassRegisterNCM(
+                        classobj,
+                        name,
+                        TJSCreateNativeClassConstructor(Some(ncm_construct)) as *mut _,
+                        name,
+                        tTJSNativeInstanceType_nitClass,
+                        0,
+                    );
+                }
+                (classid, classobj as *mut iTJSDispatch2)
+            }
+        }
+    };
+    stream.into()
+}
+
+#[proc_macro_attribute]
+/// This macro attribute do nothing. Check [tjs_class] instead.
+pub fn tjs(_attrs: TokenStream, input: TokenStream) -> TokenStream {
+    input
 }

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+krkrz_plugin_base_macros = { path = "./krkrz_plugin_base_macros" }
 windows = { version = "0.62", features = ["Win32_System_Com", "docs"], optional = true }
 
 [features]

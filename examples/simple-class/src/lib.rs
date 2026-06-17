@@ -39,7 +39,7 @@ unsafe extern "C" fn ncm_finalize(
 
 static mut SIMPLE_CLASS_CID: tjs_int32 = -1;
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
-static mut ORIGIN_SIMPLE_CLASS: *mut iTJSDispatch2 = std::ptr::null_mut();
+generate_origin_static_block!(simple_class);
 
 unsafe extern "C" fn ncm_construct(
     _result: *mut tTJSVariant,
@@ -96,33 +96,8 @@ fn create_native_class() -> *mut iTJSDispatch2 {
 #[unsafe(export_name = "V2Link")]
 unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
-    let global = unsafe { TVPGetScriptDispatch() };
-    let name: ttstr = "SimpleClass".into();
-    let n = name.c_str();
-    if !global.is_null() {
-        let mut val = tTJSVariant::new();
-        if TJS_SUCCEEDED(unsafe {
-            (*global).prop_get(0, n, std::ptr::null_mut(), &mut val, global)
-        }) {
-            unsafe {
-                ORIGIN_SIMPLE_CLASS = val.as_object();
-            }
-            val.clear();
-        }
-        let cls = create_native_class();
-        let val = tTJSVariant::from(cls);
-        unsafe { (*cls).release() };
-        unsafe {
-            (*global).prop_set(
-                TJS_MEMBERENSURE as u32,
-                n,
-                std::ptr::null_mut(),
-                &val,
-                global,
-            )
-        };
-        unsafe { (*global).release() };
-    }
+    let simple_class = create_native_class();
+    register_var!(simple_class);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -133,27 +108,7 @@ unsafe extern "system" fn v2_unlink() -> i32 {
         log!("[simple-class]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    let name: ttstr = "SimpleClass".into();
-    let n = name.c_str();
-    let global = unsafe { TVPGetScriptDispatch() };
-    if !global.is_null() {
-        unsafe { (*global).delete_member(0, n, std::ptr::null_mut(), global) };
-        unsafe {
-            if !ORIGIN_SIMPLE_CLASS.is_null() {
-                let val = tTJSVariant::from(ORIGIN_SIMPLE_CLASS);
-                (*ORIGIN_SIMPLE_CLASS).release();
-                ORIGIN_SIMPLE_CLASS = std::ptr::null_mut();
-                (*global).prop_set(
-                    TJS_MEMBERENSURE as u32,
-                    n,
-                    std::ptr::null_mut(),
-                    &val,
-                    global,
-                );
-            }
-            (*global).release();
-        }
-    }
+    unregister_var!(simple_class);
     log!("[simple-class]unlinked plugin");
     unsafe { TVPUninitImportStub() };
     0

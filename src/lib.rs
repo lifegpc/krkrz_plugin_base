@@ -10,6 +10,8 @@ use windows::Win32::System::Com;
 #[cfg(feature = "com")]
 use windows::core::Interface;
 
+pub use krkrz_plugin_base_macros::*;
+
 /// Log message to TVP
 ///
 /// Line break is not needed at the end of message.

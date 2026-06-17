@@ -49,38 +49,13 @@ impl Drop for MyFunction {
 }
 
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
-static mut ORIGIN_SAY_HELLO: *mut iTJSDispatch2 = std::ptr::null_mut();
+generate_origin_static_block!(say_hello);
 
 #[unsafe(export_name = "V2Link")]
 unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
-    let global = unsafe { TVPGetScriptDispatch() };
-    let name = ttstr::from("say_hello");
-    let n = name.c_str();
-    if !global.is_null() {
-        let mut val = tTJSVariant::new();
-        if TJS_SUCCEEDED(unsafe {
-            (*global).prop_get(0, n, std::ptr::null_mut(), &mut val, global)
-        }) {
-            unsafe {
-                ORIGIN_SAY_HELLO = val.as_object();
-            }
-            val.clear();
-        }
-        let fns = tTJSDispatch::new(MyFunction {});
-        let val = tTJSVariant::from(fns);
-        unsafe { (*fns).release() };
-        unsafe {
-            (*global).prop_set(
-                TJS_MEMBERENSURE as u32,
-                n,
-                std::ptr::null_mut(),
-                &val,
-                global,
-            )
-        };
-        unsafe { (*global).release() };
-    }
+    let say_hello = tTJSDispatch::new(MyFunction {});
+    register_var!(case = snake, say_hello);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -91,27 +66,7 @@ unsafe extern "system" fn v2_unlink() -> i32 {
         log!("[simple-function]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    let name = ttstr::from("say_hello");
-    let n = name.c_str();
-    let global = unsafe { TVPGetScriptDispatch() };
-    if !global.is_null() {
-        unsafe { (*global).delete_member(0, n, std::ptr::null_mut(), global) };
-        unsafe {
-            if !ORIGIN_SAY_HELLO.is_null() {
-                let val: tTJSVariant = tTJSVariant::from(ORIGIN_SAY_HELLO);
-                (*ORIGIN_SAY_HELLO).release();
-                ORIGIN_SAY_HELLO = std::ptr::null_mut();
-                (*global).prop_set(
-                    TJS_MEMBERENSURE as u32,
-                    n,
-                    std::ptr::null_mut(),
-                    &val,
-                    global,
-                );
-            }
-            (*global).release();
-        }
-    }
+    unregister_var!(case = snake, say_hello);
     unsafe { TVPUninitImportStub() };
     0
 }

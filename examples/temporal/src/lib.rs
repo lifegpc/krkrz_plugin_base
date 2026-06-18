@@ -12,6 +12,7 @@ struct Instant(temporal_rs::Instant);
 enum Error {
     Temporal(TemporalError),
     Type(TypeError),
+    Error(String),
 }
 
 impl From<TemporalError> for Error {
@@ -26,11 +27,24 @@ impl From<TypeError> for Error {
     }
 }
 
+impl From<String> for Error {
+    fn from(value: String) -> Self {
+        Self::Error(value)
+    }
+}
+
+impl From<&str> for Error {
+    fn from(value: &str) -> Self {
+        Self::Error(value.to_owned())
+    }
+}
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Temporal(t) => t.fmt(f),
             Self::Type(t) => t.fmt(f),
+            Self::Error(t) => t.fmt(f),
         }
     }
 }
@@ -43,7 +57,7 @@ impl Instant {
     }
 
     #[allow(non_upper_case_globals)]
-    fn from(info: &'static mut tTJSVariant) -> Result<Self, Error> {
+    fn from(info: &mut tTJSVariant) -> Result<Self, Error> {
         match info.typ() {
             tTJSVariantType_tvtString => {
                 let s = String::to_param(info)?;
@@ -54,16 +68,44 @@ impl Instant {
                 if obj.is_null() {
                     throw_null_access();
                 }
-                let obj = unsafe { &mut *obj };
+                if unsafe {
+                    (*obj).is_instance_of(
+                        0,
+                        std::ptr::null(),
+                        std::ptr::null_mut(),
+                        tjs_w!("Date"),
+                        obj,
+                    )
+                } == TJS_S_TRUE
+                {
+                    // is Date
+                    let mut var = tTJSVariant::new();
+                    let hr = unsafe {
+                        (*obj).func_call(
+                            0,
+                            tjs_w!("getTime"),
+                            std::ptr::null_mut(),
+                            &mut var,
+                            0,
+                            std::ptr::null_mut(),
+                            obj,
+                        )
+                    };
+                    if TJS_FAILED(hr) {
+                        return Err("failed to get time from Date.".into());
+                    }
+                    let time = i64::to_param(&mut var)?;
+                    return Ok(Self(temporal_rs::Instant::from_epoch_milliseconds(time)?));
+                }
                 let hr =
-                    unsafe { obj.native_instance_support(2, CID_INSTANT, std::ptr::null_mut()) };
+                    unsafe { (*obj).native_instance_support(2, CID_INSTANT, std::ptr::null_mut()) };
                 if TJS_FAILED(hr) {
-                    return Err(TypeError("Instant").into());
+                    return Err(TypeError("Instant or Date").into());
                 }
                 // #TODO: clone via access epochNanoseconds
                 unimplemented!()
             }
-            _ => Err(TypeError("string or Instant").into()),
+            _ => Err(TypeError("string or Instant or Date").into()),
         }
     }
 

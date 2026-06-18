@@ -17,7 +17,7 @@ impl Display for TypeError {
     }
 }
 
-impl TjsParam<'static> for String {
+impl<'a> TjsParam<'a> for String {
     type Error = TypeError;
     fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
         if param.is_string() {
@@ -33,7 +33,7 @@ impl TjsParam<'static> for String {
     }
 }
 
-impl TjsParam<'static> for i64 {
+impl<'a> TjsParam<'a> for i64 {
     type Error = TypeError;
     fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
         if param.can_as_integer() {
@@ -45,7 +45,7 @@ impl TjsParam<'static> for i64 {
 }
 
 
-impl TjsParam<'static> for i128 {
+impl<'a> TjsParam<'a> for i128 {
     type Error = TypeError;
     #[allow(non_upper_case_globals)]
     fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {

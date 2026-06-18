@@ -145,8 +145,7 @@ pub fn register_var(input: TokenStream) -> TokenStream {
             let origin = Ident::new(&tname, s.ident.span());
             let ident = s.ident.clone();
             quote! {
-                let name = ttstr::from(#name);
-                let n = name.c_str();
+                let n = tjs_w!(#name);
                 let mut val = tTJSVariant::new();
                 if TJS_SUCCEEDED(unsafe {
                     (*global).prop_get(0, n, std::ptr::null_mut(), &mut val, global)
@@ -204,8 +203,7 @@ pub fn unregister_var(input: TokenStream) -> TokenStream {
             let tname = format!("ORIGIN_{}", ccase!(constant, s.ident.to_string()));
             let origin = Ident::new(&tname, s.ident.span());
             quote! {
-                let name = ttstr::from(#name);
-                let n = name.c_str();
+                let n = tjs_w!(#name);
                 unsafe { (*global).delete_member(0, n, std::ptr::null_mut(), global) };
                 unsafe {
                     if !#origin.is_null() {
@@ -639,20 +637,19 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
         let len = classname_prefix.value().len();
         main_constructor = quote! {
             if numparams == 1 {
-                if param.is_null() {
-                    throw_null_access();
-                }
-                let p = unsafe { *param };
-                if !p.is_null() {
-                    let p = unsafe { &mut *p };
-                    if p.is_string() {
-                        if let Ok(s) = String::to_param(p) {
-                            if s.starts_with(#classname_prefix) {
-                                let s = &s[#len..];
-                                if let Ok(pos) = s.parse::<usize>() {
-                                    let pointer = (std::ptr::null_mut() as *mut #self_ty).with_addr(pos);
-                                    let p = unsafe { Box::from_raw(pointer) };
-                                    return Ok(p);
+                if !param.is_null() {
+                   let p = unsafe { *param };
+                    if !p.is_null() {
+                        let p = unsafe { &mut *p };
+                        if p.is_string() {
+                            if let Ok(s) = String::to_param(p) {
+                                if s.starts_with(#classname_prefix) {
+                                    let s = &s[#len..];
+                                    if let Ok(pos) = s.parse::<usize>() {
+                                        let pointer = (std::ptr::null_mut() as *mut #self_ty).with_addr(pos);
+                                        let p = unsafe { Box::from_raw(pointer) };
+                                        return Ok(p);
+                                    }
                                 }
                             }
                         }
@@ -688,25 +685,26 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     }
                     match inner(numparams, param, tjs_obj) {
                         Ok(data) => {
-                            let p = Box::into_raw(data);
-                            let arg = ttstr::from(&format!("return new {}(\"{}{}\");", #new, #classname_prefix, p.addr()));
-                            unsafe {
-                                TVPExecuteScript(&arg, result);
+                            if !result.is_null() {
+                                let p = Box::into_raw(data);
+                                let arg = ttstr::from(&format!("return new {}(\"{}{}\");", #new, #classname_prefix, p.addr()));
+                                unsafe {
+                                    TVPExecuteScript(&arg, result);
+                                }
                             }
                             TJS_S_OK
                         }
                         Err(e) => e,
                     }
                 }
-                let fnname = ttstr::from(#fnn);
-                let fname = fnname.c_str();
+                let fname = tjs_w!(#fnn);
                 unsafe {
                     TJSNativeClassRegisterNCM(
                         classobj,
                         fname,
                         TJSCreateNativeClassConstructor(Some(#ident)) as *mut _,
                         name,
-                        tTJSNativeInstanceType_nitClass,
+                        tTJSNativeInstanceType_nitMethod,
                         TJS_STATICMEMBER,
                     );
                 }
@@ -754,8 +752,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     fnn = LitStr::new(&fnn.value().to_case(case), fnn.span());
                 }
                 Some(quote! {
-                    let fnname = ttstr::from(#fnn);
-                    let fname = fnname.c_str();
+                    let fname = tjs_w!(#fnn);
                     let val = #self_ty::#ident();
                     unsafe { (*(classobj as *mut iTJSDispatch2)).prop_set(
                         TJS_MEMBERENSURE as u32,
@@ -814,9 +811,10 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         };
                         if TJS_SUCCEEDED(hr) {
                             unsafe { TVPPluginGlobalRefCount += 1 };
+                            log!("aref: {}", unsafe { TVPPluginGlobalRefCount });
                         } else {
                             // Workround fix leak when error returned from construct
-                            let _boxed = unsafe { Box::from_raw(this as *mut tTJSNativeInstance) };
+                            let _boxed = unsafe { Box::from_raw(this as *mut NativeInstatce) };
                         }
                         hr
                     }
@@ -829,6 +827,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     unsafe extern "C" fn destruct(this: *mut iTJSNativeInstance) {
                         let _box = unsafe { Box::from_raw(this as *mut NativeInstatce) };
                         unsafe { TVPPluginGlobalRefCount -= 1 };
+                        log!("dref: {}", unsafe { TVPPluginGlobalRefCount });
                     }
                 }
                 let classname = ttstr::from(#class_name);
@@ -864,8 +863,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 ) -> tjs_error {
                     TJS_S_OK
                 }
-                let fnname = ttstr::from("finalize");
-                let fname = fnname.c_str();
+                let fname = tjs_w!("finalize");
                 unsafe {
                     TJSNativeClassRegisterNCM(
                         classobj,
@@ -880,7 +878,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         name,
                         TJSCreateNativeClassConstructor(Some(ncm_construct)) as *mut _,
                         name,
-                        tTJSNativeInstanceType_nitClass,
+                        tTJSNativeInstanceType_nitMethod,
                         0,
                     );
                 }
@@ -897,4 +895,19 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
 /// This macro attribute do nothing. Check [Tjs2Class] instead.
 pub fn tjs(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     input
+}
+
+#[proc_macro]
+/// Convert a string literal to *const u16. This function will add 0 automatically.
+pub fn tjs_w(input: TokenStream) -> TokenStream {
+    let s = parse_macro_input!(input as LitStr);
+    let mut s = s.value();
+    if !s.ends_with('\0') {
+        s.push('\0');
+    }
+    let streams: Vec<_> = s.encode_utf16().map(|s| quote!(#s,)).collect();
+    let stream = quote! {
+        &[#(#streams)*] as *const u16
+    };
+    stream.into()
 }

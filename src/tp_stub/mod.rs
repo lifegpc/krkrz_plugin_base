@@ -2795,6 +2795,16 @@ impl Assign<tjs_real> for tTJSVariant {
     }
 }
 
+impl Assign<i128> for tTJSVariant {
+    fn assign(&mut self, rhs: i128) -> &mut Self {
+        if rhs > (i64::MAX as i128) || rhs < (i64::MIN as i128) {
+            self.assign(rhs.to_string().as_str())
+        } else {
+            self.assign(rhs as i64)
+        }
+    }
+}
+
 impl BitOrAssign<&tTJSVariant> for tTJSVariant {
     fn bitor_assign(&mut self, rhs: &tTJSVariant) {
         type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);

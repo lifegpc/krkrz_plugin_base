@@ -44,15 +44,12 @@ impl<'a> TjsParam<'a> for i64 {
     }
 }
 
-
 impl<'a> TjsParam<'a> for i128 {
     type Error = TypeError;
     #[allow(non_upper_case_globals)]
     fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
         match param.typ() {
-            tTJSVariantType_tvtInteger | tTJSVariantType_tvtReal => {
-                Ok(param.as_integer() as i128)
-            }
+            tTJSVariantType_tvtInteger | tTJSVariantType_tvtReal => Ok(param.as_integer() as i128),
             tTJSVariantType_tvtString => {
                 let s = param.as_string_no_add_ref();
                 if s.is_null() {

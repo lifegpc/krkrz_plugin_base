@@ -120,6 +120,16 @@ impl Instant {
     fn from_epoch_nanoseconds(epoch_nanoseconds: i128) -> Result<Self, TemporalError> {
         Ok(Self(temporal_rs::Instant::try_new(epoch_nanoseconds)?))
     }
+
+    #[tjs(case = camel)]
+    fn get_epoch_milliseconds(&self) -> i64 {
+        self.0.epoch_milliseconds()
+    }
+
+    #[tjs(case = camel)]
+    fn get_epoch_nanoseconds(&self) -> i128 {
+        self.0.epoch_nanoseconds().0
+    }
 }
 
 impl Drop for Instant {

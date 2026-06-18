@@ -2,7 +2,7 @@ use convert_case::{Case, Casing, ccase};
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Attribute, Error, FnArg, Ident, ImplItem, ImplItemFn, ItemImpl, LitStr,
+    Attribute, Error, FnArg, Ident, ImplItem, ImplItemFn, ItemImpl, LitStr, ReturnType,
     parse::{Parse, ParseStream, discouraged::Speculative},
     parse_macro_input,
     spanned::Spanned,
@@ -272,6 +272,7 @@ struct FnTjsAttributes {
     static_member: bool,
     case: Option<Case<'static>>,
     rename: Option<LitStr>,
+    get_prop: bool,
 }
 
 impl FnTjsAttributes {
@@ -298,6 +299,9 @@ impl FnTjsAttributes {
                         let value = meta.value()?;
                         let i: LitStr = value.parse()?;
                         data.rename = Some(i);
+                        Ok(())
+                    } else if meta.path.is_ident("get_prop") {
+                        data.get_prop = true;
                         Ok(())
                     } else {
                         Err(meta.error("unsupported tjs attribute for impl block"))
@@ -604,6 +608,44 @@ fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStr
     }
 }
 
+fn find_get_prop_func<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplItemFn> {
+    let mut data = Vec::new();
+    for item in items {
+        match item {
+            ImplItem::Fn(f) => {
+                let attr = FnTjsAttributes::parse(&f.attrs).unwrap();
+                if attr.skip || attr.static_member || attr.constructor {
+                    continue;
+                }
+                if attr.get_prop {
+                    data.push(f);
+                    continue;
+                }
+                if f.sig.inputs.len() != 1 {
+                    continue;
+                }
+                if !f
+                    .sig
+                    .inputs
+                    .first()
+                    .is_some_and(|f| matches!(f, FnArg::Receiver(_)))
+                {
+                    continue;
+                }
+                if returns_self_or_result_self(&f.sig.output, self_ty) {
+                    continue;
+                }
+                if !f.sig.ident.to_string().starts_with("get_") {
+                    continue;
+                }
+                data.push(f);
+            }
+            _ => {}
+        }
+    }
+    data
+}
+
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
 pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
@@ -766,6 +808,103 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             _ => None,
         })
         .collect();
+    let get_prop_streams: Vec<_> = find_get_prop_func(&input.items, &self_ty).into_iter().map(|s| {
+        let attrs = FnTjsAttributes::parse(&s.attrs).unwrap();
+        let mut bident = Ident::new(s.sig.ident.to_string().trim_start_matches("get_"), s.sig.ident.span());
+        let ident = Ident::new(&format!("ncm_{}", s.sig.ident.to_string()), s.sig.ident.span());
+        if let Some(n) = attrs.rename {
+            bident = Ident::new(&n.value(), n.span());
+        } else if let Some(case) = attrs.case {
+            bident = Ident::new(&bident.to_string().to_case(case), bident.span());
+        }
+        let fnn = LitStr::new(&bident.to_string(), bident.span());
+        let oident = s.sig.ident.clone();
+        let output_type = match &s.sig.output {
+            ReturnType::Default => panic!("get_prop mut return something."),
+            ReturnType::Type(_, ty) => ty,
+        };
+        let result = if is_result_type(&output_type) {
+            quote!(
+                let re = match re {
+                    Ok(re) => re,
+                    Err(e) => {
+                        log!("Failed to get prop from object: {}", e);
+                        return Err(TJS_E_FAIL);
+                    }
+                };
+            )
+        } else {
+            quote!()
+        };
+        let stream = quote! {
+            unsafe extern "C" fn #ident(
+                result: *mut tTJSVariant,
+                tjs_obj: *mut iTJSDispatch2,
+            ) -> tjs_error {
+                if tjs_obj.is_null() {
+                    return TJS_E_NATIVECLASSCRASH;
+                }
+                let mut _this: *mut iTJSNativeInstance = std::ptr::null_mut();
+                let hr =
+                    unsafe { (*tjs_obj).native_instance_support(0x00000002, #classid_name, &mut _this) };
+                if TJS_FAILED(hr) {
+                    return TJS_E_NATIVECLASSCRASH;
+                }
+                if _this.is_null() {
+                    return TJS_E_NATIVECLASSCRASH;
+                }
+                let self_ = unsafe { &mut *(_this as *mut NativeInstatce) };
+                let re = match self_.inner.as_mut() {
+                    Some(s) => {
+                        s.#oident()
+                    }
+                    None => {
+                        log!("Data is invalidated.");
+                        return TJS_E_FAIL;
+                    }
+                };
+                #result
+                if !result.is_null() {
+                    unsafe { (*result).assign(re) };
+                }
+                TJS_S_OK
+            }
+        };
+        (fnn, ident, stream)
+    }).collect();
+    let prop_streams: Vec<_> = get_prop_streams
+        .into_iter()
+        .map(|(fnn, ident, stream)| {
+            let (set_ident, set_prop_stream) = {
+                let set_ident =
+                    Ident::new(&ident.to_string().replace("get_", "set_"), ident.span());
+                let stream = quote! {
+                    unsafe extern "C" fn #set_ident(
+                        param: *const tTJSVariant,
+                        tjs_obj: *mut iTJSDispatch2,
+                    ) -> tjs_error {
+                        TJS_E_ACCESSDENYED
+                    }
+                };
+                (set_ident, stream)
+            };
+            quote! {
+                #stream
+                #set_prop_stream
+                let fname = tjs_w!(#fnn);
+                unsafe {
+                    TJSNativeClassRegisterNCM(
+                        classobj,
+                        fname,
+                        TJSCreateNativeClassProperty(Some(#ident), Some(#set_ident)) as *mut _,
+                        name,
+                        tTJSNativeInstanceType_nitProperty,
+                        0,
+                    );
+                }
+            }
+        })
+        .collect();
     let stream = quote! {
         #input
         static mut #classid_name: i32 = 0;
@@ -811,7 +950,6 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         };
                         if TJS_SUCCEEDED(hr) {
                             unsafe { TVPPluginGlobalRefCount += 1 };
-                            log!("aref: {}", unsafe { TVPPluginGlobalRefCount });
                         } else {
                             // Workround fix leak when error returned from construct
                             let _boxed = unsafe { Box::from_raw(this as *mut NativeInstatce) };
@@ -823,11 +961,11 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         if let Some(s) = self_.inner.as_mut() {
                             #invalidate
                         }
+                        self_.inner.take();
                     }
                     unsafe extern "C" fn destruct(this: *mut iTJSNativeInstance) {
                         let _box = unsafe { Box::from_raw(this as *mut NativeInstatce) };
                         unsafe { TVPPluginGlobalRefCount -= 1 };
-                        log!("dref: {}", unsafe { TVPPluginGlobalRefCount });
                     }
                 }
                 let classname = ttstr::from(#class_name);
@@ -884,6 +1022,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 }
                 #constructors
                 #(#static_member_streams)*
+                #(#prop_streams)*
                 (classid, classobj as *mut iTJSDispatch2)
             }
         }

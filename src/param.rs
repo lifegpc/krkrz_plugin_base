@@ -3,13 +3,13 @@ use super::*;
 use std::fmt::Display;
 
 /// Convert tTJSVariant to other types
-pub trait TjsParam: Sized {
+pub trait TjsParam<'a>: 'a + Sized {
     type Error: Display;
     /// Convert tTJSVariant to other types
-    fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error>;
+    fn to_param(param: &'a mut tTJSVariant) -> Result<Self, Self::Error>;
 }
 
-pub struct TypeError(&'static str);
+pub struct TypeError(pub &'static str);
 
 impl Display for TypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -17,7 +17,7 @@ impl Display for TypeError {
     }
 }
 
-impl TjsParam for String {
+impl TjsParam<'static> for String {
     type Error = TypeError;
     fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
         if param.is_string() {
@@ -33,7 +33,7 @@ impl TjsParam for String {
     }
 }
 
-impl TjsParam for i64 {
+impl TjsParam<'static> for i64 {
     type Error = TypeError;
     fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
         if param.can_as_integer() {
@@ -41,5 +41,34 @@ impl TjsParam for i64 {
         } else {
             Err(TypeError("integer"))
         }
+    }
+}
+
+
+impl TjsParam<'static> for i128 {
+    type Error = TypeError;
+    #[allow(non_upper_case_globals)]
+    fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
+        match param.typ() {
+            tTJSVariantType_tvtInteger | tTJSVariantType_tvtReal => {
+                Ok(param.as_integer() as i128)
+            }
+            tTJSVariantType_tvtString => {
+                let s = param.as_string_no_add_ref();
+                if s.is_null() {
+                    return Err(TypeError("string"));
+                }
+                let ss = ttstr::from(s).to_string();
+                ss.parse().map_err(|_| TypeError("big integer"))
+            }
+            _ => Err(TypeError("big integer")),
+        }
+    }
+}
+
+impl<'a> TjsParam<'a> for &'a mut tTJSVariant {
+    type Error = TypeError;
+    fn to_param(param: &'a mut tTJSVariant) -> Result<Self, Self::Error> {
+        Ok(param)
     }
 }

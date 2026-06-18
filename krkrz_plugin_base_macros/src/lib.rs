@@ -271,6 +271,9 @@ impl GlobalTjsAttributes {
 struct FnTjsAttributes {
     constructor: bool,
     skip: bool,
+    static_member: bool,
+    case: Option<Case<'static>>,
+    rename: Option<LitStr>,
 }
 
 impl FnTjsAttributes {
@@ -284,6 +287,19 @@ impl FnTjsAttributes {
                         Ok(())
                     } else if meta.path.is_ident("skip") {
                         data.skip = true;
+                        Ok(())
+                    } else if meta.path.is_ident("static_member") {
+                        data.static_member = true;
+                        Ok(())
+                    } else if meta.path.is_ident("case") {
+                        let value = meta.value()?;
+                        let i: Ident = value.parse()?;
+                        data.case = Some(parse_case(&i.to_string()));
+                        Ok(())
+                    } else if meta.path.is_ident("rename") {
+                        let value = meta.value()?;
+                        let i: LitStr = value.parse()?;
+                        data.rename = Some(i);
                         Ok(())
                     } else {
                         Err(meta.error("unsupported tjs attribute for impl block"))
@@ -311,7 +327,47 @@ fn get_class_name(ty: &syn::Type) -> syn::Result<String> {
     }
 }
 
-fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
+fn is_self_type(ty: &syn::Type, self_ty: &syn::Type) -> bool {
+    if let syn::Type::Path(type_path) = ty {
+        if type_path.path.is_ident("Self") {
+            return true;
+        }
+    }
+    let normalize = |t: &syn::Type| -> String {
+        quote!(#t)
+            .to_string()
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
+    };
+    normalize(ty) == normalize(self_ty)
+}
+
+fn returns_self_or_result_self(output: &syn::ReturnType, self_ty: &syn::Type) -> bool {
+    let ret_ty = match output {
+        syn::ReturnType::Default => return false,
+        syn::ReturnType::Type(_, ty) => ty.as_ref(),
+    };
+    if is_self_type(ret_ty, self_ty) {
+        return true;
+    }
+    if let syn::Type::Path(type_path) = ret_ty {
+        if let Some(segment) = type_path.path.segments.last() {
+            if segment.ident == "Result" {
+                if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+                    if let Some(syn::GenericArgument::Type(first_arg_ty)) = args.args.first() {
+                        if is_self_type(first_arg_ty, self_ty) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+fn find_constructor<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Option<&'a ImplItemFn> {
     let mut constructor_class = None;
     let mut new_class = None;
     let mut first_class = None;
@@ -319,7 +375,7 @@ fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
         match item {
             ImplItem::Fn(f) => {
                 let attr = FnTjsAttributes::parse(&f.attrs).unwrap();
-                if attr.skip {
+                if attr.skip || attr.static_member {
                     continue;
                 }
                 if attr.constructor {
@@ -336,6 +392,9 @@ fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
                 {
                     continue;
                 }
+                if !returns_self_or_result_self(&f.sig.output, self_ty) {
+                    continue;
+                }
                 if f.sig.ident == "new" {
                     new_class = Some(f);
                 }
@@ -350,6 +409,7 @@ fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
 fn find_constructors<'a>(
     items: &'a [ImplItem],
     main_constructor: &ImplItemFn,
+    self_ty: &syn::Type,
 ) -> Vec<&'a ImplItemFn> {
     let mut data = Vec::new();
     for item in items {
@@ -358,11 +418,18 @@ fn find_constructors<'a>(
                 if f.sig.ident == main_constructor.sig.ident {
                     continue;
                 }
+                let attr = FnTjsAttributes::parse(&f.attrs).unwrap();
+                if attr.skip || attr.static_member {
+                    continue;
+                }
                 if f.sig
                     .inputs
                     .first()
                     .is_some_and(|f| matches!(f, FnArg::Receiver(_)))
                 {
+                    continue;
+                }
+                if !returns_self_or_result_self(&f.sig.output, self_ty) {
                     continue;
                 }
                 data.push(f);
@@ -405,28 +472,20 @@ fn is_option_type(ty: &syn::Type) -> bool {
     extract_option_inner_type(ty).is_some()
 }
 
-fn extract_result_inner_type(ty: &syn::Type) -> Option<&syn::Type> {
-    use syn::{GenericArgument, PathArguments, Type, TypePath};
-
+fn is_result_type(ty: &syn::Type) -> bool {
+    use syn::{PathArguments, Type, TypePath};
     let inner = peel_type(ty);
     if let Type::Path(TypePath { qself: None, path }) = inner {
         if let Some(segment) = path.segments.last() {
             if segment.ident == "Result" {
-                if let PathArguments::AngleBracketed(ref args) = segment.arguments {
-                    if args.args.len() == 1 {
-                        if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
-                            return Some(inner_ty);
-                        }
-                    }
+                if let PathArguments::AngleBracketed(args) = &segment.arguments {
+                    let len = args.args.len();
+                    return len == 1 || len == 2;
                 }
             }
         }
     }
-    None
-}
-
-fn is_result_type(ty: &syn::Type) -> bool {
-    extract_result_inner_type(ty).is_some()
+    false
 }
 
 fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStream {
@@ -560,7 +619,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     });
     let new = attrs.new.clone().unwrap_or_else(|| class_name.clone());
     let self_ty = input.self_ty.clone();
-    let constructor = find_constructor(&input.items);
+    let constructor = find_constructor(&input.items, &self_ty);
     let mut main_constructor = if let Some(constructor) = constructor {
         gen_constructor(constructor, &self_ty)
     } else {
@@ -602,10 +661,17 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             }
             #main_constructor
         };
-        let constructors: Vec<_> = find_constructors(&input.items, main).iter().map(|s| {
+        let constructors: Vec<_> = find_constructors(&input.items, main, &self_ty).iter().map(|s| {
             let g = gen_constructor(s, &self_ty);
+            let mut bident = s.sig.ident.clone();
+            let attrs = FnTjsAttributes::parse(&s.attrs).unwrap();
+            if let Some(n) = attrs.rename {
+                bident = Ident::new(&n.value(), n.span());
+            } else if let Some(case) = attrs.case {
+                bident = Ident::new(&bident.to_string().to_case(case), bident.span());
+            }
             let ident = Ident::new(&format!("ncm_{}", s.sig.ident.to_string()), s.sig.ident.span());
-            let fnn = LitStr::new(&s.sig.ident.to_string(), s.sig.ident.span());
+            let fnn = LitStr::new(&bident.to_string(), bident.span());
             quote! {
                 unsafe extern "C" fn #ident(
                     result: *mut tTJSVariant,
@@ -671,6 +737,38 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
         })
         .next()
         .unwrap_or_default();
+    let static_member_streams: Vec<_> = input
+        .items
+        .iter()
+        .filter_map(|s| match s {
+            ImplItem::Fn(s) => {
+                let attrs = FnTjsAttributes::parse(&s.attrs).unwrap();
+                if !attrs.static_member {
+                    return None;
+                }
+                let ident = s.sig.ident.clone();
+                let mut fnn = LitStr::new(&ident.to_string(), ident.span());
+                if let Some(n) = attrs.rename {
+                    fnn = n;
+                } else if let Some(case) = attrs.case {
+                    fnn = LitStr::new(&fnn.value().to_case(case), fnn.span());
+                }
+                Some(quote! {
+                    let fnname = ttstr::from(#fnn);
+                    let fname = fnname.c_str();
+                    let val = #self_ty::#ident();
+                    unsafe { (*(classobj as *mut iTJSDispatch2)).prop_set(
+                        TJS_MEMBERENSURE as u32,
+                        fname,
+                        std::ptr::null_mut(),
+                        &val,
+                        classobj as *mut iTJSDispatch2,
+                    ) };
+                })
+            }
+            _ => None,
+        })
+        .collect();
     let stream = quote! {
         #input
         static mut #classid_name: i32 = 0;
@@ -787,6 +885,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     );
                 }
                 #constructors
+                #(#static_member_streams)*
                 (classid, classobj as *mut iTJSDispatch2)
             }
         }

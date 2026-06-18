@@ -238,6 +238,7 @@ pub fn unregister_var(input: TokenStream) -> TokenStream {
 #[derive(Default)]
 struct GlobalTjsAttributes {
     class_name: Option<LitStr>,
+    new: Option<LitStr>,
 }
 
 impl GlobalTjsAttributes {
@@ -250,6 +251,11 @@ impl GlobalTjsAttributes {
                         let value = meta.value()?;
                         let s: LitStr = value.parse()?;
                         data.class_name = Some(s);
+                        Ok(())
+                    } else if meta.path.is_ident("new") {
+                        let value = meta.value()?;
+                        let s: LitStr = value.parse()?;
+                        data.new = Some(s);
                         Ok(())
                     } else {
                         Err(meta.error("unsupported tjs attribute for impl block"))
@@ -306,6 +312,7 @@ fn get_class_name(ty: &syn::Type) -> syn::Result<String> {
 }
 
 fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
+    let mut constructor_class = None;
     let mut new_class = None;
     let mut first_class = None;
     for item in items {
@@ -316,7 +323,11 @@ fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
                     continue;
                 }
                 if attr.constructor {
-                    return Some(f);
+                    if constructor_class.is_none() {
+                        constructor_class = Some(f);
+                    } else {
+                        panic!("Two function was marked as main constructor.");
+                    }
                 }
                 if f.sig
                     .inputs
@@ -333,7 +344,33 @@ fn find_constructor(items: &[ImplItem]) -> Option<&ImplItemFn> {
             _ => {}
         }
     }
-    new_class.or(first_class)
+    constructor_class.or(new_class.or(first_class))
+}
+
+fn find_constructors<'a>(
+    items: &'a [ImplItem],
+    main_constructor: &ImplItemFn,
+) -> Vec<&'a ImplItemFn> {
+    let mut data = Vec::new();
+    for item in items {
+        match item {
+            ImplItem::Fn(f) => {
+                if f.sig.ident == main_constructor.sig.ident {
+                    continue;
+                }
+                if f.sig
+                    .inputs
+                    .first()
+                    .is_some_and(|f| matches!(f, FnArg::Receiver(_)))
+                {
+                    continue;
+                }
+                data.push(f);
+            }
+            _ => {}
+        }
+    }
+    data
 }
 
 fn peel_type(ty: &syn::Type) -> &syn::Type {
@@ -496,7 +533,6 @@ fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStr
     } else {
         quote!()
     };
-    let min_args = min_args;
     quote! {
         if numparams < (#min_args as tjs_int) {
             return Err(TJS_E_BADPARAMCOUNT);
@@ -522,9 +558,100 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             input.self_ty.span(),
         )
     });
+    let new = attrs.new.clone().unwrap_or_else(|| class_name.clone());
     let self_ty = input.self_ty.clone();
-    let constructor = find_constructor(&input.items).expect("No constructor function was found.");
-    let main_constructor = gen_constructor(constructor, &self_ty);
+    let constructor = find_constructor(&input.items);
+    let mut main_constructor = if let Some(constructor) = constructor {
+        gen_constructor(constructor, &self_ty)
+    } else {
+        quote! {
+            Err(TJS_E_INVALIDPARAM)
+        }
+    };
+    let classid_name = Ident::new(
+        &format!("CID_{}", ccase!(constant, &class_name.value())),
+        class_name.span(),
+    );
+    let constructors = if let Some(main) = constructor {
+        let classname_prefix = LitStr::new(
+            &format!("pointer.{}:", class_name.value()),
+            class_name.span(),
+        );
+        let len = classname_prefix.value().len();
+        main_constructor = quote! {
+            if numparams == 1 {
+                if param.is_null() {
+                    throw_null_access();
+                }
+                let p = unsafe { *param };
+                if !p.is_null() {
+                    let p = unsafe { &mut *p };
+                    if p.is_string() {
+                        if let Ok(s) = String::to_param(p) {
+                            if s.starts_with(#classname_prefix) {
+                                let s = &s[#len..];
+                                if let Ok(pos) = s.parse::<usize>() {
+                                    let pointer = (std::ptr::null_mut() as *mut #self_ty).with_addr(pos);
+                                    let p = unsafe { Box::from_raw(pointer) };
+                                    return Ok(p);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            #main_constructor
+        };
+        let constructors: Vec<_> = find_constructors(&input.items, main).iter().map(|s| {
+            let g = gen_constructor(s, &self_ty);
+            let ident = Ident::new(&format!("ncm_{}", s.sig.ident.to_string()), s.sig.ident.span());
+            let fnn = LitStr::new(&s.sig.ident.to_string(), s.sig.ident.span());
+            quote! {
+                unsafe extern "C" fn #ident(
+                    result: *mut tTJSVariant,
+                    numparams: tjs_int,
+                    param: *mut *mut tTJSVariant,
+                    tjs_obj: *mut iTJSDispatch2,
+                ) -> tjs_error {
+                    fn inner(
+                        numparams: tjs_int,
+                        param: *mut *mut tTJSVariant,
+                        tjs_obj: *mut iTJSDispatch2,
+                    ) -> Result<Box<#self_ty>, i32> {
+                        #g
+                    }
+                    match inner(numparams, param, tjs_obj) {
+                        Ok(data) => {
+                            let p = Box::into_raw(data);
+                            let arg = ttstr::from(&format!("return new {}(\"{}{}\");", #new, #classname_prefix, p.addr()));
+                            unsafe {
+                                TVPExecuteScript(&arg, result);
+                            }
+                            TJS_S_OK
+                        }
+                        Err(e) => e,
+                    }
+                }
+                let fnname = ttstr::from(#fnn);
+                let fname = fnname.c_str();
+                unsafe {
+                    TJSNativeClassRegisterNCM(
+                        classobj,
+                        fname,
+                        TJSCreateNativeClassConstructor(Some(#ident)) as *mut _,
+                        name,
+                        tTJSNativeInstanceType_nitClass,
+                        TJS_STATICMEMBER,
+                    );
+                }
+            }
+        }).collect();
+        quote! {
+            #(#constructors)*
+        }
+    } else {
+        quote! {}
+    };
     let invalidate = input
         .items
         .iter()
@@ -544,10 +671,6 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
         })
         .next()
         .unwrap_or_default();
-    let classid_name = Ident::new(
-        &format!("CID_{}", ccase!(constant, &class_name.value())),
-        class_name.span(),
-    );
     let stream = quote! {
         #input
         static mut #classid_name: i32 = 0;
@@ -663,6 +786,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         0,
                     );
                 }
+                #constructors
                 (classid, classobj as *mut iTJSDispatch2)
             }
         }

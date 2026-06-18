@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use krkrz_plugin_base::{tp_stub::*, *};
 
 struct SimpleClass {}
@@ -157,6 +158,13 @@ impl MyPoint {
             x: x.unwrap_or_default(),
             y: y.unwrap_or_default(),
         }
+    }
+
+    fn from(s: String) -> anyhow::Result<Self> {
+        let mut s = s.split(',');
+        let x = s.next().ok_or_else(|| anyhow!("x is missing"))?.parse()?;
+        let y = s.next().ok_or_else(|| anyhow!("y is missing"))?.parse()?;
+        Ok(Self { x, y })
     }
 }
 

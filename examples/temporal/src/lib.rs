@@ -97,13 +97,33 @@ impl Instant {
                     let time = i64::to_param(&mut var)?;
                     return Ok(Self(temporal_rs::Instant::from_epoch_milliseconds(time)?));
                 }
-                let hr =
-                    unsafe { (*obj).native_instance_support(2, CID_INSTANT, std::ptr::null_mut()) };
-                if TJS_FAILED(hr) {
+                let hr = unsafe {
+                    (*obj).is_instance_of(
+                        0,
+                        std::ptr::null(),
+                        std::ptr::null_mut(),
+                        tjs_w!("Instant"),
+                        obj,
+                    )
+                };
+                if hr != TJS_S_TRUE {
                     return Err(TypeError("Instant or Date").into());
                 }
-                // #TODO: clone via access epochNanoseconds
-                unimplemented!()
+                let mut nano = tTJSVariant::new();
+                let hr = unsafe {
+                    (*obj).prop_get(
+                        0,
+                        tjs_w!("epochNanoseconds"),
+                        std::ptr::null_mut(),
+                        &mut nano,
+                        obj,
+                    )
+                };
+                if TJS_FAILED(hr) {
+                    return Err("failed to get nanoseconds from Instant.".into());
+                }
+                let nanoseconds = i128::to_param(&mut nano)?;
+                Ok(Self(temporal_rs::Instant::try_new(nanoseconds)?))
             }
             _ => Err(TypeError("string or Instant or Date").into()),
         }

@@ -69,3 +69,19 @@ impl<'a> TjsParam<'a> for &'a mut tTJSVariant {
         Ok(param)
     }
 }
+
+impl<'a> TjsParam<'a> for ttstr {
+    type Error = TypeError;
+    fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
+        if param.is_string() {
+            let s = param.as_string_no_add_ref();
+            if s.is_null() {
+                return Err(TypeError("string"));
+            }
+            let ss = ttstr::from(s);
+            Ok(ss)
+        } else {
+            Err(TypeError("string"))
+        }
+    }
+}

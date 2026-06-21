@@ -2805,6 +2805,43 @@ impl Assign<i128> for tTJSVariant {
     }
 }
 
+impl Assign<tTJSVariant> for tTJSVariant {
+    fn assign(&mut self, rhs: tTJSVariant) -> &mut Self {
+        self.assign(&rhs)
+    }
+}
+
+impl Assign<()> for tTJSVariant {
+    fn assign(&mut self, _rhs: ()) -> &mut Self {
+        self.assign(Self::new())
+    }
+}
+
+impl Assign<String> for tTJSVariant {
+    fn assign(&mut self, rhs: String) -> &mut Self {
+        self.assign(rhs.as_str())
+    }
+}
+
+impl <T> Assign<Option<T>> for tTJSVariant
+where tTJSVariant: Assign<T> {
+    fn assign(&mut self, rhs: Option<T>) -> &mut Self {
+        if let Some(t) = rhs {
+            self.assign(t)
+        } else {
+            self.assign::<()>(())
+        }
+    }
+}
+
+impl From<&str> for tTJSVariant {
+    fn from(value: &str) -> Self {
+        let mut encoded: Vec<_> = value.encode_utf16().collect();
+        encoded.push(0);
+        Self::from(encoded.as_ptr())
+    }
+}
+
 impl BitOrAssign<&tTJSVariant> for tTJSVariant {
     fn bitor_assign(&mut self, rhs: &tTJSVariant) {
         type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);

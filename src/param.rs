@@ -70,6 +70,13 @@ impl<'a> TjsParam<'a> for &'a mut tTJSVariant {
     }
 }
 
+impl<'a> TjsParam<'a> for *mut tTJSVariant {
+    type Error = TypeError;
+    fn to_param(param: &'a mut tTJSVariant) -> Result<Self, Self::Error> {
+        Ok(param)
+    }
+}
+
 impl<'a> TjsParam<'a> for ttstr {
     type Error = TypeError;
     fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {

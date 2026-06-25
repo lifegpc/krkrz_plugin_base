@@ -176,6 +176,16 @@ impl MyPoint {
     fn set_x(&mut self, x: i64) {
         self.x = x;
     }
+    fn set_y(&mut self, y: i64) {
+        self.y = y;
+    }
+    #[tjs(case = camel)]
+    fn to_string(&self) -> String {
+        format!("{},{}", self.x, self.y)
+    }
+    fn xy(x: i64, y: i64) -> String {
+        format!("{x},{y}")
+    }
 }
 
 impl Drop for MyPoint {

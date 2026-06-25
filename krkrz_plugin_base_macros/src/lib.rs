@@ -270,6 +270,7 @@ struct FnTjsAttributes {
     constructor: bool,
     skip: bool,
     static_member: bool,
+    static_method: bool,
     case: Option<Case<'static>>,
     rename: Option<LitStr>,
     get_prop: bool,
@@ -291,6 +292,9 @@ impl FnTjsAttributes {
                         Ok(())
                     } else if meta.path.is_ident("static_member") {
                         data.static_member = true;
+                        Ok(())
+                    } else if meta.path.is_ident("static_method") {
+                        data.static_method = true;
                         Ok(())
                     } else if meta.path.is_ident("case") {
                         let value = meta.value()?;
@@ -686,7 +690,12 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
         match item {
             ImplItem::Fn(f) => {
                 let attr = FnTjsAttributes::parse(&f.attrs).unwrap();
-                if attr.skip || attr.static_member || attr.constructor || attr.get_prop {
+                if attr.skip
+                    || attr.static_member
+                    || attr.static_method
+                    || attr.constructor
+                    || attr.get_prop
+                {
                     continue;
                 }
                 // Exclude convention-based property getters (handled by find_get_prop_func)
@@ -1079,6 +1088,179 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             }
         })
         .collect();
+    let static_method_streams: Vec<_> = input
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            ImplItem::Fn(s) => {
+                let attrs = FnTjsAttributes::parse(&s.attrs).unwrap();
+                let is_explicit = attrs.static_method;
+                let is_auto = !is_explicit
+                    && !attrs.skip
+                    && !attrs.static_member
+                    && !attrs.constructor
+                    && !attrs.get_prop
+                    && !attrs.method
+                    && !s
+                        .sig
+                        .inputs
+                        .iter()
+                        .any(|arg| matches!(arg, FnArg::Receiver(_)))
+                    && !returns_self_or_result_self(&s.sig.output, &self_ty);
+                if !is_explicit && !is_auto {
+                    return None;
+                }
+                use syn::Pat;
+                let mut bident = Ident::new(&s.sig.ident.to_string(), s.sig.ident.span());
+                let ident = Ident::new(
+                    &format!("ncm_{}", s.sig.ident.to_string()),
+                    s.sig.ident.span(),
+                );
+                if let Some(n) = attrs.rename {
+                    bident = Ident::new(&n.value(), n.span());
+                } else if let Some(case) = attrs.case {
+                    bident = Ident::new(&bident.to_string().to_case(case), bident.span());
+                }
+                let fnn = LitStr::new(&bident.to_string(), bident.span());
+                let oident = s.sig.ident.clone();
+                let is_result = match &s.sig.output {
+                    ReturnType::Default => false,
+                    ReturnType::Type(_, ty) => is_result_type(ty),
+                };
+                let result = if is_result {
+                    quote!(
+                        let re = match re {
+                            Ok(re) => re,
+                            Err(e) => {
+                                log!("Failed to call static method: {}", e);
+                                return TJS_E_FAIL;
+                            }
+                        };
+                    )
+                } else {
+                    quote!()
+                };
+                let mut min_args = 0;
+                for (i, arg) in s.sig.inputs.iter().enumerate() {
+                    let t = match arg {
+                        FnArg::Typed(t) => t,
+                        _ => panic!("static_method can not have a self argument."),
+                    };
+                    if !is_option_type(&t.ty) {
+                        min_args = i + 1;
+                    }
+                }
+                let streams: Vec<_> = s
+                    .sig
+                    .inputs
+                    .iter()
+                    .enumerate()
+                    .map(|(i, arg)| {
+                        let t = match arg {
+                            FnArg::Typed(t) => t,
+                            _ => panic!("static_method can not have a self argument."),
+                        };
+                        let is_option = is_option_type(&t.ty);
+                        let name = match t.pat.as_ref() {
+                            Pat::Ident(idt) => idt.ident.clone(),
+                            _ => panic!("Unsupported name decalre of argument."),
+                        };
+                        if is_option {
+                            quote! {
+                                let #name = if numparams <= (#i as tjs_int) {
+                                    None
+                                } else {
+                                    let p = unsafe { *param.add(#i) };
+                                    if p.is_null() {
+                                        None
+                                    } else {
+                                        let p = unsafe { &mut *p };
+                                        if p.is_void() {
+                                            None
+                                        } else {
+                                            match TjsParam::to_param(p) {
+                                                Ok(t) => Some(t),
+                                                Err(e) => {
+                                                    log!("Failed to convert param to specify type: {}", e);
+                                                    return TJS_E_INVALIDPARAM;
+                                                }
+                                            }
+                                        }
+                                    }
+                                };
+                            }
+                        } else {
+                            quote! {
+                                let p = unsafe { *param.add(#i) };
+                                let #name = if p.is_null() {
+                                    throw_null_access();
+                                } else {
+                                    let p = unsafe { &mut *p };
+                                    match TjsParam::to_param(p) {
+                                        Ok(t) => t,
+                                        Err(e) => {
+                                            log!("Failed to convert param to specify type: {}", e);
+                                            return TJS_E_INVALIDPARAM;
+                                        }
+                                    }
+                                };
+                            }
+                        }
+                    })
+                    .collect();
+                let args: Vec<_> = s
+                    .sig
+                    .inputs
+                    .iter()
+                    .map(|arg| {
+                        let t = match arg {
+                            FnArg::Typed(t) => t,
+                            _ => panic!("static_method can not have a self argument."),
+                        };
+                        let name = match t.pat.as_ref() {
+                            Pat::Ident(idt) => idt.ident.clone(),
+                            _ => panic!("Unsupported name decalre of argument."),
+                        };
+                        quote!(#name,)
+                    })
+                    .collect();
+                Some(quote! {
+                    unsafe extern "C" fn #ident(
+                        result: *mut tTJSVariant,
+                        numparams: tjs_int,
+                        param: *mut *mut tTJSVariant,
+                        _tjs_obj: *mut iTJSDispatch2,
+                    ) -> tjs_error {
+                        if numparams < (#min_args as tjs_int) {
+                            return TJS_E_BADPARAMCOUNT;
+                        }
+                        if numparams > 0 && param.is_null() {
+                            throw_null_access();
+                        }
+                        #(#streams)*
+                        let re = #self_ty::#oident(#(#args)*);
+                        #result
+                        if !result.is_null() {
+                            unsafe { (*result).assign(re) };
+                        }
+                        TJS_S_OK
+                    }
+                    let fname = tjs_w!(#fnn);
+                    unsafe {
+                        TJSNativeClassRegisterNCM(
+                            classobj,
+                            fname,
+                            TJSCreateNativeClassMethod(Some(#ident)) as *mut _,
+                            name,
+                            tTJSNativeInstanceType_nitMethod,
+                            TJS_STATICMEMBER,
+                        );
+                    }
+                })
+            }
+            _ => None,
+        })
+        .collect();
     let prop_streams: Vec<_> = find_get_prop_func(&input.items, &self_ty).into_iter().map(|s| {
         let attrs = FnTjsAttributes::parse(&s.attrs).unwrap();
         let mut bident = Ident::new(s.sig.ident.to_string().trim_start_matches("get_"), s.sig.ident.span());
@@ -1378,6 +1560,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 #constructors
                 #(#static_member_streams)*
                 #(#methods_streams)*
+                #(#static_method_streams)*
                 #(#prop_streams)*
                 (classid, classobj as *mut iTJSDispatch2)
             }

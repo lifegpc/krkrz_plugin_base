@@ -654,6 +654,32 @@ fn find_get_prop_func<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a
     data
 }
 
+fn find_setter_for_getter<'a>(items: &'a [ImplItem], getter_name: &str) -> Option<&'a ImplItemFn> {
+    let setter_name = format!(
+        "set_{}",
+        getter_name.strip_prefix("get_").unwrap_or(getter_name)
+    );
+    for item in items {
+        match item {
+            ImplItem::Fn(f) => {
+                let attr = FnTjsAttributes::parse(&f.attrs).unwrap();
+                if attr.skip || attr.static_member || attr.constructor || attr.method {
+                    continue;
+                }
+                if f.sig.ident == setter_name {
+                    if f.sig.inputs.len() >= 2 {
+                        if matches!(f.sig.inputs.first(), Some(FnArg::Receiver(_))) {
+                            return Some(f);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
 fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplItemFn> {
     let mut data = Vec::new();
     for item in items {
@@ -662,6 +688,35 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
                 let attr = FnTjsAttributes::parse(&f.attrs).unwrap();
                 if attr.skip || attr.static_member || attr.constructor || attr.get_prop {
                     continue;
+                }
+                // Exclude convention-based property getters (handled by find_get_prop_func)
+                if !attr.method
+                    && f.sig.inputs.len() == 1
+                    && matches!(f.sig.inputs.first(), Some(FnArg::Receiver(_)))
+                    && f.sig.ident.to_string().starts_with("get_")
+                {
+                    continue;
+                }
+                // Exclude convention-based property setters (handled by find_setter_for_getter)
+                if !attr.method
+                    && f.sig.inputs.len() >= 2
+                    && matches!(f.sig.inputs.first(), Some(FnArg::Receiver(_)))
+                    && f.sig.ident.to_string().starts_with("set_")
+                {
+                    let suffix = f
+                        .sig
+                        .ident
+                        .to_string()
+                        .strip_prefix("set_")
+                        .unwrap()
+                        .to_string();
+                    let getter_name = format!("get_{}", suffix);
+                    let has_getter = items.iter().any(
+                        |item| matches!(item, ImplItem::Fn(gf) if gf.sig.ident == getter_name),
+                    );
+                    if has_getter {
+                        continue;
+                    }
                 }
                 if f.sig
                     .inputs
@@ -1024,7 +1079,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             }
         })
         .collect();
-    let get_prop_streams: Vec<_> = find_get_prop_func(&input.items, &self_ty).into_iter().map(|s| {
+    let prop_streams: Vec<_> = find_get_prop_func(&input.items, &self_ty).into_iter().map(|s| {
         let attrs = FnTjsAttributes::parse(&s.attrs).unwrap();
         let mut bident = Ident::new(s.sig.ident.to_string().trim_start_matches("get_"), s.sig.ident.span());
         let ident = Ident::new(&format!("ncm_{}", s.sig.ident.to_string()), s.sig.ident.span());
@@ -1045,14 +1100,14 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     Ok(re) => re,
                     Err(e) => {
                         log!("Failed to get prop from object: {}", e);
-                        return Err(TJS_E_FAIL);
+                        return TJS_E_FAIL;
                     }
                 };
             )
         } else {
             quote!()
         };
-        let stream = quote! {
+        let getter_stream = quote! {
             unsafe extern "C" fn #ident(
                 result: *mut tTJSVariant,
                 tjs_obj: *mut iTJSDispatch2,
@@ -1086,41 +1141,125 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 TJS_S_OK
             }
         };
-        (fnn, ident, stream)
-    }).collect();
-    let prop_streams: Vec<_> = get_prop_streams
-        .into_iter()
-        .map(|(fnn, ident, stream)| {
-            let (set_ident, set_prop_stream) = {
-                let set_ident =
-                    Ident::new(&ident.to_string().replace("get_", "set_"), ident.span());
-                let stream = quote! {
-                    unsafe extern "C" fn #set_ident(
-                        param: *const tTJSVariant,
-                        tjs_obj: *mut iTJSDispatch2,
-                    ) -> tjs_error {
-                        TJS_E_ACCESSDENYED
-                    }
-                };
-                (set_ident, stream)
+        let (set_ident, set_prop_stream) = if let Some(setter_fn) = find_setter_for_getter(&input.items, &s.sig.ident.to_string()) {
+            let name_str = s.sig.ident.to_string();
+            let prop_name = name_str.strip_prefix("get_").unwrap_or(&name_str);
+            let set_ident = Ident::new(&format!("ncm_set_{}", prop_name), setter_fn.sig.ident.span());
+            let value_arg = match setter_fn.sig.inputs.iter().nth(1) {
+                Some(FnArg::Typed(t)) => t,
+                _ => panic!("Setter must have a value parameter"),
             };
-            quote! {
-                #stream
-                #set_prop_stream
-                let fname = tjs_w!(#fnn);
-                unsafe {
-                    TJSNativeClassRegisterNCM(
-                        classobj,
-                        fname,
-                        TJSCreateNativeClassProperty(Some(#ident), Some(#set_ident)) as *mut _,
-                        name,
-                        tTJSNativeInstanceType_nitProperty,
-                        0,
-                    );
+            let value_name = match value_arg.pat.as_ref() {
+                syn::Pat::Ident(idt) => idt.ident.clone(),
+                _ => panic!("Unsupported parameter pattern in setter"),
+            };
+            let soident = setter_fn.sig.ident.clone();
+            let setter_output_type = &setter_fn.sig.output;
+            let setter_is_result = match setter_output_type {
+                ReturnType::Default => false,
+                ReturnType::Type(_, ty) => is_result_type(ty),
+            };
+            let (setter_invoke, setter_check) = if setter_is_result {
+                let invoke = quote! {
+                    let re = match self_.inner.as_mut() {
+                        Some(s) => {
+                            s.#soident(#value_name)
+                        }
+                        None => {
+                            log!("Data is invalidated.");
+                            return TJS_E_FAIL;
+                        }
+                    };
+                };
+                let check = quote! {
+                    match re {
+                        Ok(_) => {},
+                        Err(e) => {
+                            log!("Failed to set prop on object: {}", e);
+                            return TJS_E_FAIL;
+                        }
+                    };
+                };
+                (invoke, check)
+            } else {
+                let invoke = quote! {
+                    match self_.inner.as_mut() {
+                        Some(s) => {
+                            s.#soident(#value_name);
+                        }
+                        None => {
+                            log!("Data is invalidated.");
+                            return TJS_E_FAIL;
+                        }
+                    };
+                };
+                (invoke, quote!())
+            };
+            let setter_stream = quote! {
+                unsafe extern "C" fn #set_ident(
+                    param: *const tTJSVariant,
+                    tjs_obj: *mut iTJSDispatch2,
+                ) -> tjs_error {
+                    if tjs_obj.is_null() {
+                        return TJS_E_NATIVECLASSCRASH;
+                    }
+                    let mut _this: *mut iTJSNativeInstance = std::ptr::null_mut();
+                    let hr =
+                        unsafe { (*tjs_obj).native_instance_support(0x00000002, #classid_name, &mut _this) };
+                    if TJS_FAILED(hr) {
+                        return TJS_E_NATIVECLASSCRASH;
+                    }
+                    if _this.is_null() {
+                        return TJS_E_NATIVECLASSCRASH;
+                    }
+                    let self_ = unsafe { &mut *(_this as *mut NativeInstatce) };
+                    if param.is_null() {
+                        return TJS_E_BADPARAMCOUNT;
+                    }
+                    let p = unsafe { &mut *(param as *mut tTJSVariant) };
+                    let #value_name = match TjsParam::to_param(p) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            log!("Failed to convert param: {}", e);
+                            return TJS_E_INVALIDPARAM;
+                        }
+                    };
+                    #setter_invoke
+                    #setter_check
+                    TJS_S_OK
                 }
+            };
+            (set_ident, setter_stream)
+        } else {
+            let name_str = s.sig.ident.to_string();
+            let prop_name = name_str.strip_prefix("get_").unwrap_or(&name_str);
+            let set_ident = Ident::new(&format!("ncm_set_{}", prop_name), s.sig.ident.span());
+            let stream = quote! {
+                unsafe extern "C" fn #set_ident(
+                    param: *const tTJSVariant,
+                    tjs_obj: *mut iTJSDispatch2,
+                ) -> tjs_error {
+                    TJS_E_ACCESSDENYED
+                }
+            };
+            (set_ident, stream)
+        };
+        quote! {
+            #getter_stream
+            #set_prop_stream
+            let fname = tjs_w!(#fnn);
+            unsafe {
+                TJSNativeClassRegisterNCM(
+                    classobj,
+                    fname,
+                    TJSCreateNativeClassProperty(Some(#ident), Some(#set_ident)) as *mut _,
+                    name,
+                    tTJSNativeInstanceType_nitProperty,
+                    0,
+                );
             }
-        })
-        .collect();
+        }
+    }).collect();
     let stream = quote! {
         #input
         static mut #classid_name: i32 = 0;

@@ -166,6 +166,16 @@ impl MyPoint {
         let y = s.next().ok_or_else(|| anyhow!("y is missing"))?.parse()?;
         Ok(Self { x, y })
     }
+
+    fn get_x(&self) -> i64 {
+        self.x
+    }
+    fn get_y(&self) -> i64 {
+        self.y
+    }
+    fn set_x(&mut self, x: i64) {
+        self.x = x;
+    }
 }
 
 impl Drop for MyPoint {

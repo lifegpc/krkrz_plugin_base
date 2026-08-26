@@ -48,8 +48,10 @@ dependencies = [
  "anyhow",
  "krkrz_plugin_base",
  "log",
- "rassa",
+ "rassa-core",
  "rassa-fonts",
+ "rassa-parse",
+ "rassa-render",
 ]
 
 [[package]]
@@ -760,34 +762,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "rassa"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d821c8e14ca1c8d117cd00898d7c8e40ae11fd70f6621d178a20ef71dacd4f29"
-dependencies = [
- "rassa-capi",
- "rassa-core",
- "rassa-fonts",
- "rassa-parse",
- "rassa-render",
-]
-
-[[package]]
-name = "rassa-capi"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc2d463b0b2f7e30902b959dced4fa46a35373d9298964ce1c5fc7e8da74a428"
-dependencies = [
- "cc",
- "libc",
- "rassa-core",
- "rassa-fonts",
- "rassa-parse",
- "rassa-raster",
- "rassa-render",
 ]
 
 [[package]]

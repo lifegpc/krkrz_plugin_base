@@ -1,8 +1,12 @@
 use anyhow::Result;
 use krkrz_plugin_base::{tp_stub::*, *};
 use log::Log;
-use rassa::{FontProvider, Renderer, RendererConfig, Script};
-use rassa_fonts::{AttachedFontProvider, CrossfontProvider, FontAttachment, MergedFontProvider};
+use rassa_core::RendererConfig;
+use rassa_fonts::{
+    AttachedFontProvider, CrossfontProvider, FontAttachment, FontProvider, MergedFontProvider,
+};
+use rassa_parse::{ParsedTrack, parse_script_text};
+use rassa_render::RenderEngine;
 use std::io::Read;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -31,8 +35,8 @@ impl Log for Logger {
 const LOGGER: Logger = Logger {};
 
 pub struct AssRender {
-    script: Script,
-    renderer: Renderer,
+    script: ParsedTrack,
+    renderer: RenderEngine,
     config: RendererConfig,
     provider: Box<dyn FontProvider>,
 }
@@ -54,11 +58,11 @@ impl AssRender {
         };
         let mut text = String::new();
         stream.read_to_string(&mut text)?;
-        let script = Script::parse(&text)?;
-        let mut config = script.default_config();
+        let script = parse_script_text(&text)?;
+        let mut config = rassa_render::default_renderer_config(&script);
         config.frame.height = height as i32;
         config.frame.width = width as i32;
-        let renderer = Renderer::new();
+        let renderer = RenderEngine::new();
         let provider = if let Some(paths) = font_paths {
             let mut attachs = Vec::new();
             for s in paths {
@@ -91,12 +95,12 @@ impl AssRender {
         if layer.is_null() {
             anyhow::bail!("Layer is not a object.");
         }
-        let image = self.renderer.render_frame_with_config(
+        let image = self.renderer.render_frame_with_provider_and_config(
             &self.script,
             &self.provider,
             now_ms,
             &self.config,
-        )?;
+        );
         let mut val = tTJSVariant::new();
         let re = unsafe {
             (*layer).prop_get(
@@ -144,7 +148,7 @@ impl AssRender {
         }
         let height = val.as_integer();
         val.clear();
-        for img in image.planes {
+        for img in image {
             if img.size.height == 0 || img.size.width == 0 {
                 continue;
             }

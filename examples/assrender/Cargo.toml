@@ -10,5 +10,7 @@ crate-type = ["cdylib"]
 anyhow = "1"
 log = "0.4"
 krkrz_plugin_base = { path = "../../" }
-rassa = "0.7"
+rassa-core = "0.7"
 rassa-fonts = "0.7"
+rassa-parse = "0.7"
+rassa-render = "0.7"

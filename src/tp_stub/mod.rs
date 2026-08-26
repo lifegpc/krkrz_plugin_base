@@ -3,6 +3,7 @@
 mod generated;
 
 pub use generated::*;
+use krkrz_plugin_base_macros::tjs_w;
 use std::ffi::*;
 use std::ops::*;
 use std::ptr;
@@ -2274,6 +2275,27 @@ impl tTJSVariant {
             tTJSVariantType_tvtOctet | tTJSVariantType_tvtObject
         )
     }
+
+    pub fn is_array(&self) -> bool {
+        if self.is_object() {
+            let obj = self.as_object_no_add_ref();
+            if obj.is_null() {
+                return false;
+            }
+            let re = unsafe {
+                (*obj).is_instance_of(
+                    0,
+                    ptr::null(),
+                    ptr::null_mut(),
+                    tjs_w!("Array"),
+                    ptr::null_mut(),
+                )
+            };
+            re == TJS_S_TRUE
+        } else {
+            false
+        }
+    }
 }
 
 impl From<&tTJSVariant> for tTJSVariant {
@@ -2823,8 +2845,10 @@ impl Assign<String> for tTJSVariant {
     }
 }
 
-impl <T> Assign<Option<T>> for tTJSVariant
-where tTJSVariant: Assign<T> {
+impl<T> Assign<Option<T>> for tTJSVariant
+where
+    tTJSVariant: Assign<T>,
+{
     fn assign(&mut self, rhs: Option<T>) -> &mut Self {
         if let Some(t) = rhs {
             self.assign(t)

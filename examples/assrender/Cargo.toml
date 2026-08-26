@@ -1,0 +1,14 @@
+[package]
+name = "assrender"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+krkrz_plugin_base = { path = "../../" }
+rassa = "0.7"
+rassa-fonts = "0.7"

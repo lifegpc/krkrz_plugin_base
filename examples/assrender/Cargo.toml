@@ -14,3 +14,8 @@ rassa-core = "0.7"
 rassa-fonts = "0.7"
 rassa-parse = "0.7"
 rassa-render = "0.7"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"

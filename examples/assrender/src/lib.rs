@@ -9,26 +9,20 @@ use rassa_parse::{ParsedTrack, parse_script_text};
 use rassa_render::RenderEngine;
 use std::io::Read;
 use std::ptr;
-use std::sync::atomic::{AtomicBool, Ordering};
 
-static IS_UNLOADING: AtomicBool = AtomicBool::new(false);
 generate_origin_static_block!(ass_render);
 
 struct Logger {}
 
 impl Log for Logger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
-        if IS_UNLOADING.load(Ordering::Relaxed) {
-            return false;
-        }
         metadata.level() <= log::Level::Debug
     }
     fn flush(&self) {}
     fn log(&self, record: &log::Record) {
-        if IS_UNLOADING.load(Ordering::Relaxed) {
-            return;
+        if self.enabled(record.metadata()) {
+            krkrz_plugin_base::log!("[ass-render][{}][{}]{}", record.level(), record.target(), record.args());
         }
-        log!("[ass-render][{}]{}", record.level(), record.args()); // 打印rassa消息到TVP控制台，由于没全局引入log::*，因此不存在循环调用log
     }
 }
 
@@ -58,7 +52,9 @@ impl AssRender {
         };
         let mut text = String::new();
         stream.read_to_string(&mut text)?;
+        log::info!("Loaded ass: {}", ass_path);
         let script = parse_script_text(&text)?;
+        log::info!("ParsedTrack: {} Events", script.events.len());
         let mut config = rassa_render::default_renderer_config(&script);
         config.frame.height = height as i32;
         config.frame.width = width as i32;
@@ -72,6 +68,7 @@ impl AssRender {
                 };
                 let mut data = Vec::new();
                 stream.read_to_end(&mut data)?;
+                log::info!("Loaded font: {}", s);
                 attachs.push(FontAttachment { name: s, data });
             }
             Box::new(MergedFontProvider::new(
@@ -222,8 +219,10 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     }
     let ass_render = AssRender::create_native_class().1;
     register_var!(ass_render);
-    IS_UNLOADING.store(false, Ordering::SeqCst);
-    let _ = log::set_logger(&LOGGER);
+    if let Err(e) = log::set_logger(&LOGGER) {
+        krkrz_plugin_base::log!("[ass-render]Failed to set log crate: {}", e);
+    }
+    log::set_max_level(log::LevelFilter::Debug);
     0
 }
 

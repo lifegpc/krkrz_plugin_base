@@ -2276,6 +2276,14 @@ impl tTJSVariant {
         )
     }
 
+    #[allow(non_upper_case_globals)]
+    pub fn can_as_real(&self) -> bool {
+        !matches!(
+            self.typ(),
+            tTJSVariantType_tvtOctet | tTJSVariantType_tvtObject
+        )
+    }
+
     pub fn is_array(&self) -> bool {
         if self.is_object() {
             let obj = self.as_object_no_add_ref();

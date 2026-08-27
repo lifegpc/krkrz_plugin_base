@@ -21,7 +21,12 @@ impl Log for Logger {
     fn flush(&self) {}
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
-            krkrz_plugin_base::log!("[ass-render][{}][{}]{}", record.level(), record.target(), record.args());
+            krkrz_plugin_base::log!(
+                "[ass-render][{}][{}]{}",
+                record.level(),
+                record.target(),
+                record.args()
+            );
         }
     }
 }

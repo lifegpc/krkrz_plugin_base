@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use krkrz_plugin_base::{tp_stub::*, *};
+use krkrz_plugin_base::{tp_stub::*, types::*, *};
 
 struct SimpleClass {}
 
@@ -137,6 +137,10 @@ impl NClass {
 
     fn invalidate(&self) {
         log!("NClass: invalidate");
+    }
+
+    fn octet(&self, v: Octet) {
+        log!("octet: {v}");
     }
 }
 

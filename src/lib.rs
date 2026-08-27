@@ -4,6 +4,7 @@ pub mod com;
 pub mod param;
 #[allow(non_snake_case, non_camel_case_types)]
 pub mod tp_stub;
+pub mod types;
 
 use tp_stub::*;
 #[cfg(feature = "com")]

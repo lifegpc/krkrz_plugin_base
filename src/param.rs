@@ -1,5 +1,6 @@
 //! Convert tTJSVariant to other types
 use super::*;
+use crate::types::*;
 use std::fmt::Display;
 use std::ptr;
 
@@ -41,6 +42,29 @@ impl<'a> TjsParam<'a> for i64 {
             Ok(param.as_integer())
         } else {
             Err(TypeError("integer"))
+        }
+    }
+}
+
+impl<'a> TjsParam<'a> for f64 {
+    type Error = TypeError;
+    fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
+        if param.can_as_real() {
+            Ok(param.as_real())
+        } else {
+            Err(TypeError("real"))
+        }
+    }
+}
+
+impl<'a> TjsParam<'a> for Octet {
+    type Error = TypeError;
+    fn to_param(param: &'a mut tTJSVariant) -> Result<Self, Self::Error> {
+        if param.is_octet() {
+            let val = param.as_octet();
+            Ok(unsafe { Octet::new_owned(val) })
+        } else {
+            Err(TypeError("octet"))
         }
     }
 }

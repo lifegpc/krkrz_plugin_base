@@ -2304,6 +2304,27 @@ impl tTJSVariant {
             false
         }
     }
+
+    pub fn is_dict(&self) -> bool {
+        if self.is_object() {
+            let obj = self.as_object_no_add_ref();
+            if obj.is_null() {
+                return false;
+            }
+            let re = unsafe {
+                (*obj).is_instance_of(
+                    0,
+                    ptr::null(),
+                    ptr::null_mut(),
+                    tjs_w!("Dictionary"),
+                    ptr::null_mut(),
+                )
+            };
+            re == TJS_S_TRUE
+        } else {
+            false
+        }
+    }
 }
 
 impl From<&tTJSVariant> for tTJSVariant {

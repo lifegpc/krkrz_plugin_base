@@ -1,6 +1,8 @@
 #![cfg_attr(any(docsrs, feature = "unstable"), feature(doc_cfg))]
 #[cfg(feature = "com")]
 pub mod com;
+#[cfg(feature = "serde")]
+pub mod de;
 pub mod param;
 #[allow(non_snake_case, non_camel_case_types)]
 pub mod tp_stub;
@@ -29,7 +31,7 @@ pub fn log(msg: &str) {
 #[macro_export]
 macro_rules! log {
     ($($arg:tt)*) => {
-        log(&format!($($arg)*));
+        $crate::log(&format!($($arg)*));
     };
 }
 
@@ -52,7 +54,7 @@ pub fn throw_exception_message(msg: &str) -> ! {
 #[macro_export]
 macro_rules! throw_exception_message {
     ($($arg:tt)*) => {
-        throw_exception_message(&format!($($arg)*));
+        $crate::throw_exception_message(&format!($($arg)*));
     };
 }
 

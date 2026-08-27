@@ -11,6 +11,7 @@ pub trait TjsParam<'a>: 'a + Sized {
     fn to_param(param: &'a mut tTJSVariant) -> Result<Self, Self::Error>;
 }
 
+#[derive(Debug)]
 pub struct TypeError(pub &'static str);
 
 impl Display for TypeError {

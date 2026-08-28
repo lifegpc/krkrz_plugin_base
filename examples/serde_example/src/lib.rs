@@ -3,7 +3,7 @@ use krkrz_plugin_base::{de::*, tp_stub::*, *};
 use serde::Deserialize;
 
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
-generate_origin_static_block!(a_class);
+generate_origin_static_block!(a_class, json);
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
@@ -50,11 +50,22 @@ impl AClass {
     }
 }
 
+struct JSON;
+
+#[Tjs2Class]
+impl JSON {
+    #[tjs(static_method)]
+    fn parse(json: String) -> Result<tTJSVariant> {
+        Ok(serde_json::from_str(&json)?)
+    }
+}
+
 #[unsafe(export_name = "V2Link")]
 unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
     let a_class = AClass::create_native_class().1;
-    register_var!(a_class);
+    let json = JSON::create_native_class().1;
+    register_var!(a_class, case = constant, json);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -65,7 +76,7 @@ unsafe extern "system" fn v2_unlink() -> i32 {
         log!("[serde-example]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    unregister_var!(a_class);
+    unregister_var!(a_class, case = constant, json);
     unsafe { TVPUninitImportStub() };
     0
 }

@@ -1,7 +1,9 @@
 use crate::{param::*, tp_stub::*};
 use krkrz_plugin_base_macros::tjs_w;
-use serde::Deserializer;
-use serde::de::{EnumAccess, Error, IntoDeserializer, MapAccess, SeqAccess, VariantAccess};
+use serde::de::{
+    EnumAccess, Error, IntoDeserializer, MapAccess, SeqAccess, VariantAccess, Visitor,
+};
+use serde::{Deserialize, Deserializer};
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::ptr;
@@ -11,7 +13,7 @@ macro_rules! impl_int_deser {
     ($method:ident, $ty:ty, $visit:ident) => {
         fn $method<V>(self, visitor: V) -> Result<V::Value, Self::Error>
         where
-            V: serde::de::Visitor<'de>,
+            V: Visitor<'de>,
         {
             if self.value.can_as_integer() {
                 let v = self.value.as_integer();
@@ -248,7 +250,7 @@ impl<'de, 'a> VariantAccess<'de> for TjsEnum<'a> {
     }
     fn tuple_variant<V>(mut self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         let de = TjsDeserializer {
             value: &mut self.inner_value,
@@ -261,7 +263,7 @@ impl<'de, 'a> VariantAccess<'de> for TjsEnum<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         let de = TjsDeserializer {
             value: &mut self.inner_value,
@@ -309,7 +311,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     #[allow(non_upper_case_globals)]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         match self.value.typ() {
             tTJSVariantType_tvtVoid => self.deserialize_unit(visitor),
@@ -331,7 +333,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     }
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.is_integer() {
             let v = self.value.as_integer();
@@ -351,7 +353,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     impl_int_deser!(deserialize_i32, i32, visit_i32);
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.can_as_integer() {
             let v = self.value.as_integer();
@@ -365,10 +367,12 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     impl_int_deser!(deserialize_u32, u32, visit_u32);
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.can_as_integer() {
             let v = self.value.as_integer();
+            // Cast i64 to u64 will keep same behavior which krkrz does.
+            // DO NOT CHANGE THIS TO TryFrom
             visitor.visit_u64(v as u64)
         } else {
             Err(TypeError("integer").into())
@@ -376,7 +380,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     }
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.can_as_real() {
             let v = self.value.as_real();
@@ -387,7 +391,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     }
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.can_as_real() {
             let v = self.value.as_real();
@@ -398,19 +402,19 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     }
     fn deserialize_char<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         Err(DeserError::NotSupported("char"))
     }
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.deserialize_string(visitor)
     }
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.is_string() {
             let r = self.value.as_string_no_add_ref();
@@ -425,19 +429,19 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     }
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         visitor.visit_bytes(self.get_str_slice()?)
     }
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         visitor.visit_byte_buf(self.get_str_slice()?.to_vec())
     }
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.is_void() {
             visitor.visit_none()
@@ -447,7 +451,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     }
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.is_void() {
             visitor.visit_unit()
@@ -461,7 +465,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.deserialize_unit(visitor)
     }
@@ -471,13 +475,13 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         visitor.visit_newtype_struct(self)
     }
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.is_array() {
             let obj = self.value.as_object_no_add_ref();
@@ -506,7 +510,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     }
     fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.deserialize_seq(visitor)
     }
@@ -517,13 +521,13 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.deserialize_seq(visitor)
     }
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         if self.value.is_dict() {
             let obj = self.value.as_object_no_add_ref();
@@ -559,7 +563,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.deserialize_map(visitor)
     }
@@ -570,7 +574,7 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         let de = TjsEnum {
             obj: self.value,
@@ -580,14 +584,163 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
     }
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.deserialize_str(visitor)
     }
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
-        V: serde::de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.deserialize_unit(visitor)
+    }
+}
+
+impl<'de> Visitor<'de> for tTJSVariant {
+    type Value = Self;
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "boolean/int/float/boolean/dict/array")
+    }
+    fn visit_bool<E>(mut self, v: bool) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.assign(if v { 1 } else { 0 });
+        Ok(self)
+    }
+    fn visit_i64<E>(mut self, v: i64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.assign(v);
+        Ok(self)
+    }
+    fn visit_u64<E>(mut self, v: u64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.assign(v as i64);
+        Ok(self)
+    }
+    fn visit_f32<E>(mut self, v: f32) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.assign(v as f64);
+        Ok(self)
+    }
+    fn visit_f64<E>(mut self, v: f64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.assign(v);
+        Ok(self)
+    }
+    fn visit_str<E>(mut self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.assign(v);
+        Ok(self)
+    }
+    fn visit_bytes<E>(mut self, v: &[u8]) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        let mut v = tTJSVariantOctet::from(v);
+        self.assign((&mut v) as *mut _);
+        Ok(self)
+    }
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(Self::new())
+    }
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(Self::new())
+    }
+    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let mut s = ttstr::from(tjs_w!("return new Array();"));
+        unsafe { TVPExecuteScript(&mut s, &mut self) };
+        let obj = self.as_object_no_add_ref();
+        if obj.is_null() {
+            return Err(A::Error::custom("Failed to create array."));
+        }
+        while let Some(mut ele) = seq.next_element::<tTJSVariant>()? {
+            let mut args = [&mut ele as *mut _];
+            let r = unsafe {
+                (*obj).func_call(
+                    0,
+                    tjs_w!("add"),
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                    1,
+                    args.as_mut_ptr(),
+                    obj,
+                )
+            };
+            if TJS_FAILED(r) {
+                return Err(A::Error::custom("Failed to add item to array."));
+            }
+        }
+        Ok(self)
+    }
+    fn visit_map<A>(mut self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut s = ttstr::from(tjs_w!("return new Dictionary();"));
+        unsafe { TVPExecuteScript(&mut s, &mut self) };
+        let obj = self.as_object_no_add_ref();
+        if obj.is_null() {
+            return Err(A::Error::custom("Failed to create dictionary."));
+        }
+        while let Some((k, v)) = map.next_entry::<&str, tTJSVariant>()? {
+            let key = ttstr::from(k);
+            let r = unsafe {
+                (*obj).prop_set(
+                    TJS_MEMBERENSURE as u32,
+                    key.c_str(),
+                    ptr::null_mut(),
+                    &v,
+                    obj,
+                )
+            };
+            if TJS_FAILED(r) {
+                return Err(A::Error::custom(format!(
+                    "Failed to set key {} to dictionary.",
+                    k
+                )));
+            }
+        }
+        Ok(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for tTJSVariant {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(Self::new())
     }
 }

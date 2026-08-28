@@ -78,6 +78,10 @@ impl JSON {
     fn parse(json: String) -> Result<tTJSVariant> {
         Ok(serde_json::from_str(&json)?)
     }
+    #[tjs(static_method)]
+    fn stringify(obj: &mut tTJSVariant) -> Result<String> {
+        Ok(serde_json::to_string(obj)?)
+    }
 }
 
 #[unsafe(export_name = "V2Link")]

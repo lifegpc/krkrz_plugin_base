@@ -97,7 +97,7 @@ impl<'a> TjsDeserializer<'a> {
 }
 
 #[derive(Default)]
-struct DictKeyCollector(Rc<RefCell<HashSet<String>>>);
+pub(crate) struct DictKeyCollector(pub(crate) Rc<RefCell<HashSet<String>>>);
 
 impl TJSDispatch for DictKeyCollector {
     fn func_call(
@@ -330,7 +330,13 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
                 } else if self.value.is_dict() {
                     self.deserialize_map(visitor)
                 } else {
-                    self.deserialize_string(visitor)
+                    let s = self.value.as_string();
+                    if s.is_null() {
+                        return Err(TypeError("string").into());
+                    }
+                    let t = ttstr::from(s);
+                    unsafe { (*s).release() };
+                    visitor.visit_string(t.to_string())
                 }
             }
             _ => Err(DeserError::NotSupported("Unknown types")),

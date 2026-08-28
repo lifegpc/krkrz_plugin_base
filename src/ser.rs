@@ -1,4 +1,5 @@
-use crate::tp_stub::*;
+use crate::de::DictKeyCollector;
+use crate::{tp_stub::*, types::*};
 use krkrz_plugin_base_macros::tjs_w;
 use serde::ser::{
     Error, SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant, SerializeTuple,
@@ -504,5 +505,114 @@ impl<'a> Serializer for TjsSerializer<'a> {
             )));
         }
         Ok(TjsSeqSerializer { obj: inner_obj })
+    }
+}
+
+impl Serialize for tTJSVariant {
+    #[allow(non_upper_case_globals)]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self.typ() {
+            tTJSVariantType_tvtVoid => serializer.serialize_unit(),
+            tTJSVariantType_tvtInteger => serializer.serialize_i64(self.as_integer()),
+            tTJSVariantType_tvtReal => serializer.serialize_f64(self.as_real()),
+            tTJSVariantType_tvtString => {
+                let s = self.as_string_no_add_ref();
+                if s.is_null() {
+                    return Err(S::Error::custom("String is null"));
+                }
+                let s = ttstr::from(s);
+                serializer.serialize_str(&s.to_string())
+            }
+            tTJSVariantType_tvtOctet => {
+                let o = self.as_octet();
+                if o.is_null() {
+                    return Err(S::Error::custom("octet is null"));
+                }
+                let o = unsafe { Octet::new_owned(o) };
+                serializer.serialize_bytes(&o)
+            }
+            tTJSVariantType_tvtObject => {
+                if self.is_array() {
+                    let obj = self.as_object_no_add_ref();
+                    let mut val = tTJSVariant::new();
+                    let r = unsafe {
+                        (*obj).prop_get(
+                            TJS_MEMBERMUSTEXIST as u32,
+                            tjs_w!("count"),
+                            ptr::null_mut(),
+                            &mut val,
+                            obj,
+                        )
+                    };
+                    if TJS_FAILED(r) {
+                        return Err(S::Error::custom("data is not a array"));
+                    }
+                    let count = val.as_integer();
+                    let mut seq = serializer.serialize_seq(Some(count as usize))?;
+                    for i in 0..count {
+                        let mut value = tTJSVariant::new();
+                        let r = unsafe {
+                            (*obj).prop_get_by_num(
+                                TJS_MEMBERMUSTEXIST as u32,
+                                i as i32,
+                                &mut value,
+                                obj,
+                            )
+                        };
+                        if TJS_FAILED(r) {
+                            return Err(S::Error::custom(format!("Failed to get item {}", i)));
+                        }
+                        seq.serialize_element(&value)?;
+                    }
+                    seq.end()
+                } else if self.is_dict() {
+                    let obj = self.as_object_no_add_ref();
+                    let collector = DictKeyCollector::default();
+                    let dict = collector.0.clone();
+                    let collector = tTJSDispatch::new(collector);
+                    let mut val = tTJSVariant::new();
+                    val.assign(collector);
+                    unsafe { (*collector).release() };
+                    let mut collector = tTJSVariantClosure::new(collector, ptr::null_mut());
+                    let r = unsafe {
+                        (*obj).enum_members(TJS_IGNOREPROP as u32, &mut collector, ptr::null_mut())
+                    };
+                    if TJS_FAILED(r) {
+                        return Err(S::Error::custom("data is not a dict"));
+                    }
+                    let mut map = serializer.serialize_map(Some(dict.borrow().len()))?;
+                    for key in dict.borrow().iter() {
+                        let mut value = tTJSVariant::new();
+                        let s = ttstr::from(key);
+                        let r = unsafe {
+                            (*obj).prop_get(
+                                TJS_MEMBERMUSTEXIST as u32,
+                                s.c_str(),
+                                ptr::null_mut(),
+                                &mut value,
+                                obj,
+                            )
+                        };
+                        if TJS_FAILED(r) {
+                            return Err(S::Error::custom(format!("Failed to get item {}", key)));
+                        }
+                        map.serialize_entry(key, &value)?;
+                    }
+                    map.end()
+                } else {
+                    let s = self.as_string();
+                    if s.is_null() {
+                        return Err(S::Error::custom("data is not a string"));
+                    }
+                    let t = ttstr::from(s);
+                    unsafe { (*s).release() };
+                    serializer.serialize_str(&t.to_string())
+                }
+            }
+            _ => Err(S::Error::custom("other types is not supported.")),
+        }
     }
 }

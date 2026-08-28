@@ -1579,13 +1579,18 @@ pub fn tjs(_attrs: TokenStream, input: TokenStream) -> TokenStream {
 /// Convert a string literal to *const u16. This function will add 0 automatically.
 pub fn tjs_w(input: TokenStream) -> TokenStream {
     let s = parse_macro_input!(input as LitStr);
-    let mut s = s.value();
-    if !s.ends_with('\0') {
-        s.push('\0');
+    let literal = s.value();
+    let mut utf16 = literal.clone();
+    if !utf16.ends_with('\0') {
+        utf16.push('\0');
     }
-    let streams: Vec<_> = s.encode_utf16().map(|s| quote!(#s,)).collect();
+    let streams: Vec<_> = utf16.encode_utf16().map(|s| quote!(#s,)).collect();
+    let literal = LitStr::new(&literal, s.span());
     let stream = quote! {
-        &[#(#streams)*] as *const u16
+        {
+            const _: &str = #literal;
+            &[#(#streams)*] as *const u16
+        }
     };
     stream.into()
 }

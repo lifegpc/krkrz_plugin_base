@@ -4,6 +4,8 @@ pub mod com;
 #[cfg(feature = "serde")]
 pub mod de;
 pub mod param;
+#[cfg(feature = "serde")]
+pub mod ser;
 #[allow(non_snake_case, non_camel_case_types)]
 pub mod tp_stub;
 pub mod types;

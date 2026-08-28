@@ -1,12 +1,11 @@
 use anyhow::Result;
 use krkrz_plugin_base::{de::*, tp_stub::*, *};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
 generate_origin_static_block!(a_class, json);
 
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Version {
     major: i32,
     minor: i32,
@@ -56,6 +55,18 @@ impl AClass {
 
     fn v5(&self, value: i64, #[tjs(serde)] v: Version) {
         log!("{} {:?}", value, v);
+    }
+
+    #[tjs(serde)]
+    fn v6(&self, major: i32, minor: i32, patch: Option<i32>) -> Result<tTJSVariant> {
+        let patch = patch.unwrap_or(0);
+        let v = Version {
+            major,
+            minor,
+            patch,
+            full: format!("{major}.{minor}.{patch}"),
+        };
+        Ok(ser::to(&v)?)
     }
 }
 

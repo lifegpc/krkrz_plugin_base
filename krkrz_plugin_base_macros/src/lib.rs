@@ -276,6 +276,7 @@ struct FnTjsAttributes {
     get_prop: bool,
     method: bool,
     return_this: bool,
+    serde: bool,
 }
 
 impl FnTjsAttributes {
@@ -315,6 +316,13 @@ impl FnTjsAttributes {
                     } else if meta.path.is_ident("method") {
                         data.method = true;
                         Ok(())
+                    } else if meta.path.is_ident("serde") {
+                        if !cfg!(feature = "serde") {
+                            return Err(meta
+                                .error("the `tjs(serde)` attribute requires the `serde` feature"));
+                        }
+                        data.serde = true;
+                        Ok(())
                     } else {
                         Err(meta.error("unsupported tjs attribute for impl block"))
                     }
@@ -322,6 +330,166 @@ impl FnTjsAttributes {
             }
         }
         Ok(data)
+    }
+}
+
+fn arg_uses_serde(attrs: &[Attribute], function_serde: bool) -> syn::Result<bool> {
+    if function_serde {
+        return Ok(true);
+    }
+    for attr in attrs {
+        if attr.path().is_ident("tjs") {
+            let mut serde = false;
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("serde") {
+                    if !cfg!(feature = "serde") {
+                        return Err(
+                            meta.error("the `tjs(serde)` attribute requires the `serde` feature")
+                        );
+                    }
+                    serde = true;
+                    Ok(())
+                } else {
+                    Ok(())
+                }
+            })?;
+            if serde {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn validate_serde_attrs(input: &ItemImpl) -> syn::Result<()> {
+    if cfg!(feature = "serde") {
+        return Ok(());
+    }
+    for attr in &input.attrs {
+        if attr.path().is_ident("tjs") {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("serde") {
+                    Err(meta.error("the `tjs(serde)` attribute requires the `serde` feature"))
+                } else {
+                    Ok(())
+                }
+            })?;
+        }
+    }
+    for item in &input.items {
+        if let ImplItem::Fn(function) = item {
+            for attr in &function.attrs {
+                if attr.path().is_ident("tjs") {
+                    attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("serde") {
+                            Err(meta
+                                .error("the `tjs(serde)` attribute requires the `serde` feature"))
+                        } else {
+                            Ok(())
+                        }
+                    })?;
+                }
+            }
+            for arg in &function.sig.inputs {
+                if let FnArg::Typed(arg) = arg {
+                    for attr in &arg.attrs {
+                        if attr.path().is_ident("tjs") {
+                            attr.parse_nested_meta(|meta| {
+                                if meta.path.is_ident("serde") {
+                                    Err(meta.error(
+                                        "the `tjs(serde)` attribute requires the `serde` feature",
+                                    ))
+                                } else {
+                                    Ok(())
+                                }
+                            })?;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn gen_param_stream(
+    t: &syn::PatType,
+    i: usize,
+    function_serde: bool,
+    failure: proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    use syn::Pat;
+    let is_option = is_option_type(&t.ty);
+    let name = match t.pat.as_ref() {
+        Pat::Ident(idt) => idt.ident.clone(),
+        _ => panic!("Unsupported name decalre of argument."),
+    };
+    let serde = arg_uses_serde(&t.attrs, function_serde).unwrap();
+    let convert = if serde {
+        quote! {
+            match krkrz_plugin_base::de::from(p) {
+                Ok(t) => t,
+                Err(e) => {
+                    log!("Failed to deserialize param: {}", e);
+                    return #failure;
+                }
+            }
+        }
+    } else {
+        quote! {
+            match TjsParam::to_param(p) {
+                Ok(t) => t,
+                Err(e) => {
+                    log!("Failed to convert param to specify type: {}", e);
+                    return #failure;
+                }
+            }
+        }
+    };
+    if is_option {
+        if serde {
+            quote! {
+                let #name = if numparams <= (#i as tjs_int) {
+                    None
+                } else {
+                    let p = unsafe { *param.add(#i) };
+                    if p.is_null() {
+                        None
+                    } else {
+                        let p = unsafe { &mut *p };
+                            Some(#convert)
+                    }
+                };
+            }
+        } else {
+            quote! {
+                let #name = if numparams <= (#i as tjs_int) {
+                    None
+                } else {
+                    let p = unsafe { *param.add(#i) };
+                    if p.is_null() {
+                        None
+                    } else {
+                        let p = unsafe { &mut *p };
+                        if p.is_void() {
+                            None
+                        } else {
+                            #convert
+                        }
+                    }
+                };
+            }
+        }
+    } else {
+        quote! {
+            let p = unsafe { *param.add(#i) };
+            let #name = if p.is_null() {
+                throw_null_access();
+            } else {
+                let p = unsafe { &mut *p };
+                #convert
+            };
+        }
     }
 }
 
@@ -514,61 +682,16 @@ fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStr
             min_args = i + 1;
         }
     }
+    let function_serde = FnTjsAttributes::parse(&f.attrs).unwrap().serde;
     let streams: Vec<_> = f
         .sig
         .inputs
         .iter()
         .enumerate()
-        .map(|(i, arg)| {
-            let t = match arg {
-                FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
-                FnArg::Typed(t) => t,
-            };
-            let is_option = is_option_type(&t.ty);
-            let name = match t.pat.as_ref() {
-                Pat::Ident(idt) => idt.ident.clone(),
-                _ => panic!("Unsupported name decalre of argument."),
-            };
-            if is_option {
-                quote! {
-                    let #name = if numparams <= (#i as tjs_int) {
-                        None
-                    } else {
-                        let p = unsafe { *param.add(#i) };
-                        if p.is_null() {
-                            None
-                        } else {
-                            let p = unsafe { &mut *p };
-                            if p.is_void() {
-                                None
-                            } else {
-                                match TjsParam::to_param(p) {
-                                    Ok(t) => Some(t),
-                                    Err(e) => {
-                                        log!("Failed to convert param to specify type: {}", e);
-                                        return Err(TJS_E_INVALIDPARAM);
-                                    }
-                                }
-                            }
-                        }
-                    };
-                }
-            } else {
-                quote! {
-                    let p = unsafe { *param.add(#i) };
-                    let #name = if p.is_null() {
-                        throw_null_access();
-                    } else {
-                        let p = unsafe { &mut *p };
-                        match TjsParam::to_param(p) {
-                            Ok(t) => t,
-                            Err(e) => {
-                                log!("Failed to convert param to specify type: {}", e);
-                                return Err(TJS_E_INVALIDPARAM);
-                            }
-                        }
-                    };
-                }
+        .map(|(i, arg)| match arg {
+            FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
+            FnArg::Typed(t) => {
+                gen_param_stream(t, i, function_serde, quote!(Err(TJS_E_INVALIDPARAM)))
             }
         })
         .collect();
@@ -749,6 +872,9 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
 #[allow(non_snake_case)]
 pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemImpl);
+    if let Err(error) = validate_serde_attrs(&input) {
+        return error.into_compile_error().into();
+    }
     let attrs = GlobalTjsAttributes::parse(&input.attrs).unwrap();
     let class_name = attrs.class_name.clone().unwrap_or_else(|| {
         LitStr::new(
@@ -956,63 +1082,21 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     min_args = i + 1;
                 }
             }
+            let function_serde = attrs.serde;
             let streams: Vec<_> = s
                 .sig
                 .inputs
                 .iter()
                 .skip(1)
                 .enumerate()
-                .map(|(i, arg)| {
-                    let t = match arg {
-                        FnArg::Receiver(_) => panic!("params can not have a self argument."),
-                        FnArg::Typed(t) => t,
-                    };
-                    let is_option = is_option_type(&t.ty);
-                    let name = match t.pat.as_ref() {
-                        Pat::Ident(idt) => idt.ident.clone(),
-                        _ => panic!("Unsupported name decalre of argument."),
-                    };
-                    if is_option {
-                        quote! {
-                            let #name = if numparams <= (#i as tjs_int) {
-                                None
-                            } else {
-                                let p = unsafe { *param.add(#i) };
-                                if p.is_null() {
-                                    None
-                                } else {
-                                    let p = unsafe { &mut *p };
-                                    if p.is_void() {
-                                        None
-                                    } else {
-                                        match TjsParam::to_param(p) {
-                                            Ok(t) => Some(t),
-                                            Err(e) => {
-                                                log!("Failed to convert param to specify type: {}", e);
-                                                return TJS_E_INVALIDPARAM;
-                                            }
-                                        }
-                                    }
-                                }
-                            };
-                        }
-                    } else {
-                        quote! {
-                            let p = unsafe { *param.add(#i) };
-                            let #name = if p.is_null() {
-                                throw_null_access();
-                            } else {
-                                let p = unsafe { &mut *p };
-                                match TjsParam::to_param(p) {
-                                    Ok(t) => t,
-                                    Err(e) => {
-                                        log!("Failed to convert param to specify type: {}", e);
-                                        return TJS_E_INVALIDPARAM;
-                                    }
-                                }
-                            };
-                        }
-                    }
+                .map(|(i, arg)| match arg {
+                    FnArg::Receiver(_) => panic!("params can not have a self argument."),
+                    FnArg::Typed(t) => gen_param_stream(
+                        t,
+                        i,
+                        function_serde,
+                        quote!(TJS_E_INVALIDPARAM),
+                    ),
                 })
                 .collect();
             let args: Vec<_> = s
@@ -1150,61 +1234,18 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         min_args = i + 1;
                     }
                 }
+                let function_serde = attrs.serde;
                 let streams: Vec<_> = s
                     .sig
                     .inputs
                     .iter()
                     .enumerate()
-                    .map(|(i, arg)| {
-                        let t = match arg {
-                            FnArg::Typed(t) => t,
-                            _ => panic!("static_method can not have a self argument."),
-                        };
-                        let is_option = is_option_type(&t.ty);
-                        let name = match t.pat.as_ref() {
-                            Pat::Ident(idt) => idt.ident.clone(),
-                            _ => panic!("Unsupported name decalre of argument."),
-                        };
-                        if is_option {
-                            quote! {
-                                let #name = if numparams <= (#i as tjs_int) {
-                                    None
-                                } else {
-                                    let p = unsafe { *param.add(#i) };
-                                    if p.is_null() {
-                                        None
-                                    } else {
-                                        let p = unsafe { &mut *p };
-                                        if p.is_void() {
-                                            None
-                                        } else {
-                                            match TjsParam::to_param(p) {
-                                                Ok(t) => Some(t),
-                                                Err(e) => {
-                                                    log!("Failed to convert param to specify type: {}", e);
-                                                    return TJS_E_INVALIDPARAM;
-                                                }
-                                            }
-                                        }
-                                    }
-                                };
-                            }
-                        } else {
-                            quote! {
-                                let p = unsafe { *param.add(#i) };
-                                let #name = if p.is_null() {
-                                    throw_null_access();
-                                } else {
-                                    let p = unsafe { &mut *p };
-                                    match TjsParam::to_param(p) {
-                                        Ok(t) => t,
-                                        Err(e) => {
-                                            log!("Failed to convert param to specify type: {}", e);
-                                            return TJS_E_INVALIDPARAM;
-                                        }
-                                    }
-                                };
-                            }
+                    .map(|(i, arg)| match arg {
+                        FnArg::Typed(t) => {
+                            gen_param_stream(t, i, function_serde, quote!(TJS_E_INVALIDPARAM))
+                        }
+                        FnArg::Receiver(_) => {
+                            panic!("static_method can not have a self argument.")
                         }
                     })
                     .collect();
@@ -1442,8 +1483,18 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             }
         }
     }).collect();
+    let mut emitted_input = input.clone();
+    for item in &mut emitted_input.items {
+        if let ImplItem::Fn(function) = item {
+            for arg in &mut function.sig.inputs {
+                if let FnArg::Typed(arg) = arg {
+                    arg.attrs.retain(|attr| !attr.path().is_ident("tjs"));
+                }
+            }
+        }
+    }
     let stream = quote! {
-        #input
+        #emitted_input
         static mut #classid_name: i32 = 0;
         impl krkrz_plugin_base::Tjs2Class for #self_ty {
             fn create_native_class() -> (i32, *mut krkrz_plugin_base::tp_stub::iTJSDispatch2) {

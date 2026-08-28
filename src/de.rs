@@ -9,6 +9,11 @@ use std::collections::HashSet;
 use std::ptr;
 use std::rc::Rc;
 
+pub fn from<'de, T: Deserialize<'de>>(param: &mut tTJSVariant) -> Result<T, DeserError> {
+    let de = TjsDeserializer::new(param);
+    T::deserialize(de)
+}
+
 macro_rules! impl_int_deser {
     ($method:ident, $ty:ty, $visit:ident) => {
         fn $method<V>(self, visitor: V) -> Result<V::Value, Self::Error>

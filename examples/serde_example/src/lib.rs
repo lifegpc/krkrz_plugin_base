@@ -48,6 +48,15 @@ impl AClass {
         log!("{:?}", v);
         Ok(())
     }
+
+    #[tjs(serde)]
+    fn v4(&self, v: Version, optional: Option<Test>) {
+        log!("{:?} {:?}", v, optional);
+    }
+
+    fn v5(&self, value: i64, #[tjs(serde)] v: Version) {
+        log!("{} {:?}", value, v);
+    }
 }
 
 struct JSON;

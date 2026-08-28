@@ -11,7 +11,7 @@ windows = { version = "0.62", features = ["Win32_System_Com", "docs"], optional 
 [features]
 default = ["com", "serde"]
 com = ["dep:windows"]
-serde = ["dep:serde"]
+serde = ["dep:serde", "krkrz_plugin_base_macros/serde"]
 unstable = []
 
 [build-dependencies]

@@ -14,7 +14,7 @@ use tp_stub::*;
 #[cfg(feature = "com")]
 use windows::Win32::System::Com;
 #[cfg(feature = "com")]
-use windows::core::Interface;
+use windows_core::Interface;
 
 pub use krkrz_plugin_base_macros::*;
 pub use param::TjsParam;

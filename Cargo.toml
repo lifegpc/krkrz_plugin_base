@@ -7,10 +7,11 @@ edition = "2024"
 krkrz_plugin_base_macros = { path = "./krkrz_plugin_base_macros" }
 serde = { version = "1", optional = true }
 windows = { version = "0.62", features = ["Win32_System_Com", "docs"], optional = true }
+windows-core = { version = "0.62", optional = true }
 
 [features]
 default = ["com", "serde"]
-com = ["dep:windows"]
+com = ["dep:windows", "dep:windows-core"]
 serde = ["dep:serde", "krkrz_plugin_base_macros/serde"]
 unstable = []
 

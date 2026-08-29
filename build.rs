@@ -28,8 +28,8 @@ fn main() {
         .blocklist_function("tTJSDispatch_.*")
         .blocklist_type("tTJS(NativeInstance|Dispatch)")
         .derive_default(true)
-        .no_default("tTJS(String|Variant|VariantString|VariantOctet|VariantClosure)")
-        .no_copy("tTJS(VariantString|VariantClosure)")
+        .no_default("(tTJS(String|Variant|VariantString|VariantOctet|VariantClosure)|i(TVP|TJS).*)")
+        .no_copy("(tTJS(VariantString|VariantClosure)|i(TVP|TJS).*)")
         .override_abi(
             bindgen::Abi::System,
             "(tTVPXP3ArchiveExtractionFilter|tTVPWindowMessageReceiver)",

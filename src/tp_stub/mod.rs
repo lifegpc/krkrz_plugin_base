@@ -4715,3 +4715,9 @@ impl tTJSDispatch {
         TJS_E_NOTIMPL
     }
 }
+
+impl iTVPStorageLister {
+    pub fn add(&mut self, file: &ttstr) {
+        unsafe { ((*self.vtable_).iTVPStorageLister_Add)(self, file) }
+    }
+}

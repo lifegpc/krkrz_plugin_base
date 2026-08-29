@@ -870,6 +870,111 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
 
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
+/// Expose an inherent Rust implementation as a TJS native class.
+///
+/// The macro implements [`krkrz_plugin_base::Tjs2Class`] for the target type.
+/// Call `Type::create_native_class()` and register the returned dispatch object with
+/// [`register_var`] to make the class available in the TJS global scope.
+///
+/// # Class attributes
+///
+/// Apply `#[tjs(...)]` to the `impl` block to customize the generated class:
+///
+/// - `class_name = "Name"` sets the native class name. The default is the Rust type name.
+/// - `new = "Expression"` sets the TJS expression used by named constructors. The default is
+///   `class_name`; this can be a dotted expression such as `"Temporal.Instant"`.
+///
+/// # Constructors
+///
+/// A constructor is an associated function without a receiver that returns `Self` or
+/// `Result<Self, E>`. The main constructor is selected in this order:
+///
+/// 1. A function marked `#[tjs(constructor)]`.
+/// 2. A function named `new`.
+/// 3. The first eligible associated function.
+///
+/// All other eligible associated functions are registered as static named constructors. Their
+/// names can be changed with `rename` or `case`. `Option<T>` parameters are optional; omitted
+/// arguments are passed as `None`.
+///
+/// # Members
+///
+/// By convention, methods with a receiver become instance methods and associated functions
+/// without a receiver become static methods. Functions returning `Self` or `Result<Self, E>` are
+/// treated as constructors instead of static methods.
+///
+/// A receiver method named `get_name` with no other arguments becomes a `name` property. A
+/// matching `set_name(&mut self, value)` method becomes its setter. Use `#[tjs(method)]` to keep
+/// a conventionally named getter or setter as a method, or `#[tjs(get_prop)]` to explicitly mark
+/// a no-argument receiver method as a property getter.
+///
+/// # Function attributes
+///
+/// Apply `#[tjs(...)]` to individual functions to control member generation:
+///
+/// - `constructor` selects the main constructor.
+/// - `skip` excludes the function from generated members.
+/// - `static_method` explicitly exposes an eligible non-constructor associated function as a
+///   static method.
+/// - `static_member` evaluates a no-argument associated function once and exposes its
+///   `tTJSVariant` result as a static property.
+/// - `method` forces a receiver function to be generated as an instance method.
+/// - `get_prop` explicitly exposes a no-argument receiver function as a property getter.
+/// - `return_this` makes an instance method return the TJS object rather than its Rust return
+///   value.
+/// - `rename = "name"` sets the TJS member name.
+/// - `case = camel` converts the Rust function name with `convert_case`. Supported cases are
+///   `snake`, `constant`, `upper_snake`, `ada`, `kebab`, `cobol`, `upper_kebab`, `train`, `flat`,
+///   `upper_flat`, `pascal`, `upper_camel`, `camel`, `lower`, `upper`, `title`, and `sentence`.
+/// - `serde` deserializes parameters through `krkrz_plugin_base::de::from`. It requires the
+///   crate's `serde` feature and may be placed on a function or on an individual parameter.
+///
+/// Parameters use [`krkrz_plugin_base::TjsParam`] conversion unless `serde` is enabled. A
+/// `Result<T, E>` returned from a constructor, method, property getter, or static method is
+/// unwrapped; an error is logged and reported to TJS as `TJS_E_FAIL`.
+///
+/// An instance method named `invalidate` is called when the TJS native instance is invalidated.
+/// It is not exported as a TJS member. The instance remains valid only until TJS calls its
+/// invalidation hook.
+///
+/// # Example
+///
+/// ```ignore
+/// use krkrz_plugin_base::{register_var, tjs, Tjs2Class, TjsParam};
+///
+/// struct Point {
+///     x: i64,
+///     y: i64,
+/// }
+///
+/// #[Tjs2Class]
+/// #[tjs(class_name = "Point")]
+/// impl Point {
+///     fn new(x: Option<i64>, y: Option<i64>) -> Self {
+///         Self { x: x.unwrap_or_default(), y: y.unwrap_or_default() }
+///     }
+///
+///     fn from_text(text: String) -> Result<Self, String> {
+///         let (x, y) = text.split_once(',').ok_or("expected x,y")?;
+///         Ok(Self { x: x.parse().map_err(|_| "invalid x")?, y: y.parse().map_err(|_| "invalid y")? })
+///     }
+///
+///     fn get_x(&self) -> i64 { self.x }
+///     fn set_x(&mut self, value: i64) { self.x = value; }
+///
+///     #[tjs(case = camel)]
+///     fn translate_by(&mut self, dx: i64, dy: i64) {
+///         self.x += dx;
+///         self.y += dy;
+///     }
+///
+///     #[tjs(static_method)]
+///     fn dimensions() -> i64 { 2 }
+/// }
+///
+/// let point_class = Point::create_native_class().1;
+/// register_var!(case = camel, point_class);
+/// ```
 pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemImpl);
     if let Err(error) = validate_serde_attrs(&input) {

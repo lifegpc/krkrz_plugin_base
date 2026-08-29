@@ -1,0 +1,12 @@
+[package]
+name = "zipfs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1.0"
+krkrz_plugin_base = { path = "../../", default-features = false, features = ["com"] }
+zip = { version = "8.6", default-features = false, features = ["bzip2", "deflate", "deflate64", "lzma", "ppmd", "xz", "zstd"] }

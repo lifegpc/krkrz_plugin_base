@@ -4721,3 +4721,21 @@ impl iTVPStorageLister {
         unsafe { ((*self.vtable_).iTVPStorageLister_Add)(self, file) }
     }
 }
+
+impl iTVPStorageMedia {
+    pub fn add_ref(&mut self) {
+        unsafe { ((*self.vtable_).iTVPStorageMedia_AddRef)(self) }
+    }
+    pub fn release(&mut self) {
+        unsafe { ((*self.vtable_).iTVPStorageMedia_Release)(self) }
+    }
+}
+
+impl IStream {
+    pub fn add_ref(&mut self) -> u32 {
+        unsafe { ((*self._base._base.vtable_).IUnknown_AddRef)(self as *mut _ as *mut _) }
+    }
+    pub fn release(&mut self) -> u32 {
+        unsafe { ((*self._base._base.vtable_).IUnknown_Release)(self as *mut _ as *mut _) }
+    }
+}

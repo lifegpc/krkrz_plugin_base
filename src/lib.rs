@@ -9,6 +9,8 @@ pub mod ser;
 #[allow(non_snake_case, non_camel_case_types)]
 pub mod tp_stub;
 pub mod types;
+#[cfg(feature = "serde")]
+pub mod value;
 
 use tp_stub::*;
 #[cfg(feature = "com")]
@@ -18,6 +20,8 @@ use windows_core::Interface;
 
 pub use krkrz_plugin_base_macros::*;
 pub use param::TjsParam;
+#[cfg(feature = "serde")]
+pub use value::TJSVariant;
 
 /// Log message to TVP
 ///

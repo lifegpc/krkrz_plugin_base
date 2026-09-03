@@ -3,7 +3,7 @@ use krkrz_plugin_base::{de::*, tp_stub::*, *};
 use serde::{Deserialize, Serialize};
 
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
-generate_origin_static_block!(a_class, json);
+generate_origin_static_block!(a_class, json, make_version);
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Version {
@@ -23,6 +23,13 @@ enum Test {
 }
 
 struct AClass {}
+
+#[tjs2_function]
+#[tjs(serde)]
+fn make_version(version: Version, optional: Option<Version>) -> Result<tTJSVariant> {
+    let version = optional.unwrap_or(version);
+    Ok(ser::to(&version)?)
+}
 
 #[Tjs2Class]
 impl AClass {
@@ -89,7 +96,8 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
     let a_class = AClass::create_native_class().1;
     let json = JSON::create_native_class().1;
-    register_var!(a_class, case = constant, json);
+    let make_version = create_make_version();
+    register_var!(a_class, case = constant, json, make_version);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -100,7 +108,7 @@ unsafe extern "system" fn v2_unlink() -> i32 {
         log!("[serde-example]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    unregister_var!(a_class, case = constant, json);
+    unregister_var!(a_class, case = constant, json, make_version);
     unsafe { TVPUninitImportStub() };
     0
 }

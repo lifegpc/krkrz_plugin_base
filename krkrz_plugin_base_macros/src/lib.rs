@@ -2,7 +2,7 @@ use convert_case::{Case, Casing, ccase};
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Attribute, Error, FnArg, Ident, ImplItem, ImplItemFn, ItemImpl, LitStr, ReturnType,
+    Attribute, Error, FnArg, Ident, ImplItem, ImplItemFn, ItemFn, ItemImpl, LitStr, ReturnType,
     parse::{Parse, ParseStream, discouraged::Speculative},
     parse_macro_input,
     spanned::Spanned,
@@ -405,6 +405,40 @@ fn validate_serde_attrs(input: &ItemImpl) -> syn::Result<()> {
                             })?;
                         }
                     }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_serde_attrs_fn(input: &ItemFn) -> syn::Result<()> {
+    if cfg!(feature = "serde") {
+        return Ok(());
+    }
+    for attr in &input.attrs {
+        if attr.path().is_ident("tjs") {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("serde") {
+                    Err(meta.error("the `tjs(serde)` attribute requires the `serde` feature"))
+                } else {
+                    Ok(())
+                }
+            })?;
+        }
+    }
+    for arg in &input.sig.inputs {
+        if let FnArg::Typed(arg) = arg {
+            for attr in &arg.attrs {
+                if attr.path().is_ident("tjs") {
+                    attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("serde") {
+                            Err(meta
+                                .error("the `tjs(serde)` attribute requires the `serde` feature"))
+                        } else {
+                            Ok(())
+                        }
+                    })?;
                 }
             }
         }
@@ -1720,6 +1754,179 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 #(#prop_streams)*
                 (classid, classobj as *mut iTJSDispatch2)
             }
+        }
+    };
+    stream.into()
+}
+
+#[proc_macro_attribute]
+/// Expose a free Rust function as a TJS dispatch object.
+///
+/// The generated `create_<function>` function returns an
+/// [`iTJSDispatch2`](krkrz_plugin_base::tp_stub::iTJSDispatch2) pointer which can be
+/// registered with [`register_var`](krkrz_plugin_base::register_var). Function and
+/// parameter options are written in `#[tjs(...)]`; `#[tjs(serde)]` uses the same
+/// deserialization path as [`Tjs2Class`](krkrz_plugin_base::Tjs2Class).
+///
+/// ```ignore
+/// use krkrz_plugin_base::{register_var, tjs, tjs2_function};
+///
+/// #[tjs2_function]
+/// #[tjs(serde)]
+/// fn add(left: i64, right: Option<i64>) -> i64 {
+///     left + right.unwrap_or_default()
+/// }
+///
+/// let add = create_add();
+/// register_var!(add);
+/// ```
+pub fn tjs2_function(attrs: TokenStream, input: TokenStream) -> TokenStream {
+    if !attrs.is_empty() {
+        return Error::new(
+            proc_macro2::Span::call_site(),
+            "`tjs2_function` does not accept arguments; use `#[tjs(...)]`",
+        )
+        .into_compile_error()
+        .into();
+    }
+
+    let input = parse_macro_input!(input as ItemFn);
+    if let Err(error) = validate_serde_attrs_fn(&input) {
+        return error.into_compile_error().into();
+    }
+    let tjs_attrs = match FnTjsAttributes::parse(&input.attrs) {
+        Ok(attrs) => attrs,
+        Err(error) => return error.into_compile_error().into(),
+    };
+
+    let function_name = input.sig.ident.clone();
+    let create_name = Ident::new(&format!("create_{}", function_name), function_name.span());
+    let function_serde = tjs_attrs.serde;
+
+    let mut min_args = 0;
+    for (i, arg) in input.sig.inputs.iter().enumerate() {
+        let FnArg::Typed(arg) = arg else {
+            return Error::new(arg.span(), "a TJS function can not have a receiver")
+                .into_compile_error()
+                .into();
+        };
+        if !matches!(arg.pat.as_ref(), syn::Pat::Ident(_)) {
+            return Error::new(
+                arg.pat.span(),
+                "TJS function parameters must use identifier patterns",
+            )
+            .into_compile_error()
+            .into();
+        }
+        if !is_option_type(&arg.ty) {
+            min_args = i + 1;
+        }
+    }
+
+    let param_streams: Vec<_> = input
+        .sig
+        .inputs
+        .iter()
+        .enumerate()
+        .map(|(i, arg)| match arg {
+            FnArg::Typed(arg) => {
+                gen_param_stream(arg, i, function_serde, quote!(TJS_E_INVALIDPARAM))
+            }
+            FnArg::Receiver(_) => unreachable!("function receivers were rejected above"),
+        })
+        .collect();
+    let call_args: Vec<_> = input
+        .sig
+        .inputs
+        .iter()
+        .map(|arg| {
+            let FnArg::Typed(arg) = arg else {
+                unreachable!("function receivers were rejected above");
+            };
+            let syn::Pat::Ident(pattern) = arg.pat.as_ref() else {
+                unreachable!("parameter patterns were validated above");
+            };
+            let name = pattern.ident.clone();
+            quote!(#name,)
+        })
+        .collect();
+
+    let call_result = match &input.sig.output {
+        ReturnType::Default => quote! {},
+        ReturnType::Type(_, output) if is_result_type(output) => quote! {
+            let re = match re {
+                Ok(re) => re,
+                Err(e) => {
+                    log!("Failed to call function: {}", e);
+                    return TJS_E_FAIL;
+                }
+            };
+        },
+        ReturnType::Type(_, _) => quote! {},
+    };
+    let return_stream = if tjs_attrs.return_this {
+        quote!((*result).assign(objthis);)
+    } else {
+        quote!((*result).assign(re);)
+    };
+    let function_call = if input.sig.unsafety.is_some() {
+        quote!(unsafe { #function_name(#(#call_args)*) })
+    } else {
+        quote!(#function_name(#(#call_args)*))
+    };
+
+    // `#[tjs]` is consumed by this macro. Removing it from the emitted function
+    // also removes parameter attributes which would otherwise be expanded again.
+    let mut emitted_input = input.clone();
+    emitted_input
+        .attrs
+        .retain(|attr| !attr.path().is_ident("tjs"));
+    for arg in &mut emitted_input.sig.inputs {
+        if let FnArg::Typed(arg) = arg {
+            arg.attrs.retain(|attr| !attr.path().is_ident("tjs"));
+        }
+    }
+    let visibility = input.vis.clone();
+
+    let stream = quote! {
+        #emitted_input
+
+        #visibility fn #create_name() -> *mut krkrz_plugin_base::tp_stub::iTJSDispatch2 {
+            use krkrz_plugin_base::{tp_stub::*, *};
+
+            struct Wrapper {}
+
+            impl TJSDispatch for Wrapper {
+                fn func_call(
+                    &mut self,
+                    _flag: tjs_uint32,
+                    membername: *const tjs_char,
+                    _hint: *mut tjs_uint32,
+                    result: *mut tTJSVariant,
+                    numparams: tjs_int,
+                    param: *mut *mut tTJSVariant,
+                    objthis: *mut iTJSDispatch2,
+                ) -> tjs_error {
+                    if !membername.is_null() {
+                        return TJS_E_MEMBERNOTFOUND;
+                    }
+                    if numparams < (#min_args as tjs_int) {
+                        return TJS_E_BADPARAMCOUNT;
+                    }
+                    if numparams > 0 && param.is_null() {
+                        throw_null_access();
+                    }
+                    #(#param_streams)*
+                    let re = #function_call;
+                    #call_result
+                    if !result.is_null() {
+                        unsafe { #return_stream }
+                    }
+                    TJS_S_OK
+                }
+            }
+
+            tTJSDispatch::new(Wrapper {})
         }
     };
     stream.into()

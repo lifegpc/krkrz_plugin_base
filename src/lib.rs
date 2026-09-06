@@ -1,4 +1,5 @@
 #![cfg_attr(any(docsrs, feature = "unstable"), feature(doc_cfg))]
+pub mod args;
 #[cfg(feature = "com")]
 pub mod com;
 #[cfg(feature = "serde")]
@@ -18,7 +19,13 @@ use windows::Win32::System::Com;
 #[cfg(feature = "com")]
 use windows_core::Interface;
 
-pub use krkrz_plugin_base_macros::*;
+pub use args::{Tjs2ArgsArray, Tjs2ArgsVec};
+#[cfg(feature = "serde")]
+pub use krkrz_plugin_base_macros::tjs2_serde_get_args;
+pub use krkrz_plugin_base_macros::{
+    Tjs2Class, generate_origin_static_block, register_var, tjs, tjs_w, tjs2_function,
+    tjs2_get_args, unregister_var,
+};
 pub use param::TjsParam;
 #[cfg(feature = "serde")]
 pub use value::TJSVariant;
@@ -99,4 +106,33 @@ pub fn create_istream(name: &str, flags: u32) -> Option<Com::IStream> {
 
 pub trait Tjs2Class {
     fn create_native_class() -> (i32, *mut iTJSDispatch2);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // These tests only type-check macro expansions. They are deliberately not
+    // executed because creating a TJS variant requires an initialized engine.
+    #[allow(dead_code)]
+    fn get_args_macro_typechecks() {
+        let mut fixed = tjs2_get_args!(12, "text");
+        let _ = (fixed.len(), fixed.as_mut_ptr());
+
+        let values = vec![34_i64, 56_i64];
+        let mut dynamic = tjs2_get_args!(12, *values, "text");
+        let _ = (dynamic.len(), dynamic.as_mut_ptr());
+    }
+
+    #[cfg(feature = "serde")]
+    #[allow(dead_code)]
+    fn serde_get_args_macro_typechecks() -> Result<(), ser::SerError> {
+        let mut fixed = tjs2_serde_get_args!(12, "text")?;
+        let _ = (fixed.len(), fixed.as_mut_ptr());
+
+        let values = vec![34_i64, 56_i64];
+        let mut dynamic = tjs2_serde_get_args!(12, *values, "text")?;
+        let _ = (dynamic.len(), dynamic.as_mut_ptr());
+        Ok(())
+    }
 }

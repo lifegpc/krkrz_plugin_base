@@ -1,11 +1,14 @@
 use convert_case::{Case, Casing, ccase};
 use proc_macro::TokenStream;
 use proc_macro_crate::{FoundCrate, crate_name};
+use proc_macro2::Span;
 use quote::quote;
 use syn::{
-    Attribute, Error, FnArg, Ident, ImplItem, ImplItemFn, ItemFn, ItemImpl, LitStr, ReturnType,
-    parse::{Parse, ParseStream, discouraged::Speculative},
+    Attribute, Error, Expr, FnArg, Ident, ImplItem, ImplItemFn, ItemFn, ItemImpl, LitStr,
+    ReturnType, UnOp,
+    parse::{Parse, ParseStream, Parser, discouraged::Speculative},
     parse_macro_input,
+    punctuated::Punctuated,
     spanned::Spanned,
     token::{Comma, Eq},
 };
@@ -23,6 +26,133 @@ fn runtime_crate() -> proc_macro2::TokenStream {
             quote!(::#ident)
         }
     }
+}
+
+enum Tjs2GetArg {
+    Value(Expr),
+    Spread(Expr),
+}
+
+fn parse_tjs2_get_args(input: TokenStream) -> syn::Result<Vec<Tjs2GetArg>> {
+    let values = Punctuated::<Expr, Comma>::parse_terminated.parse(input)?;
+    Ok(values
+        .into_iter()
+        .map(|value| match value {
+            Expr::Unary(unary) if matches!(unary.op, UnOp::Deref(_)) => {
+                Tjs2GetArg::Spread(*unary.expr)
+            }
+            value => Tjs2GetArg::Value(value),
+        })
+        .collect())
+}
+
+/// Makes an owned TJS argument list.
+///
+/// Each ordinary argument initializes a new `tTJSVariant` with `assign`.
+/// A `*iter` argument expands the iterator and therefore returns the dynamic
+/// [`Tjs2ArgsVec`](https://docs.rs/krkrz_plugin_base/latest/krkrz_plugin_base/struct.Tjs2ArgsVec.html)
+/// form. Calls without an expansion return `Tjs2ArgsArray`.
+#[proc_macro]
+pub fn tjs2_get_args(input: TokenStream) -> TokenStream {
+    let values = match parse_tjs2_get_args(input) {
+        Ok(values) => values,
+        Err(error) => return error.into_compile_error().into(),
+    };
+    let runtime_crate = runtime_crate();
+    let variant = Ident::new("__tjs2_variant", Span::mixed_site());
+    let values_ident = Ident::new("__tjs2_values", Span::mixed_site());
+    let item = Ident::new("__tjs2_item", Span::mixed_site());
+    let has_spread = values
+        .iter()
+        .any(|value| matches!(value, Tjs2GetArg::Spread(_)));
+
+    if !has_spread {
+        let values = values.into_iter().map(|value| match value {
+            Tjs2GetArg::Value(value) => quote! {{
+                let mut #variant = #runtime_crate::tp_stub::tTJSVariant::new();
+                #variant.assign(#value);
+                #variant
+            }},
+            Tjs2GetArg::Spread(_) => unreachable!(),
+        });
+        return quote! {
+            #runtime_crate::Tjs2ArgsArray::new([#(#values),*])
+        }
+        .into();
+    }
+
+    let values = values.into_iter().map(|value| match value {
+        Tjs2GetArg::Value(value) => quote! {
+            {
+                let mut #variant = #runtime_crate::tp_stub::tTJSVariant::new();
+                #variant.assign(#value);
+                #values_ident.push(#variant);
+            }
+        },
+        Tjs2GetArg::Spread(iter) => quote! {
+            for #item in (#iter) {
+                let mut #variant = #runtime_crate::tp_stub::tTJSVariant::new();
+                #variant.assign(#item);
+                #values_ident.push(#variant);
+            }
+        },
+    });
+    quote! {{
+        let mut #values_ident = ::std::vec::Vec::new();
+        #(#values)*
+        #runtime_crate::Tjs2ArgsVec::new(#values_ident)
+    }}
+    .into()
+}
+
+/// Makes an owned TJS argument list by serializing every argument.
+///
+/// This macro is available only when the `serde` feature is enabled. Its
+/// result is `Result<Tjs2ArgsArray<_> | Tjs2ArgsVec, SerError>`; use `?` to
+/// propagate serialization failures. `*iter` expands an iterator.
+#[cfg(feature = "serde")]
+#[proc_macro]
+pub fn tjs2_serde_get_args(input: TokenStream) -> TokenStream {
+    let values = match parse_tjs2_get_args(input) {
+        Ok(values) => values,
+        Err(error) => return error.into_compile_error().into(),
+    };
+    let runtime_crate = runtime_crate();
+    let values_ident = Ident::new("__tjs2_values", Span::mixed_site());
+    let item = Ident::new("__tjs2_item", Span::mixed_site());
+    let has_spread = values
+        .iter()
+        .any(|value| matches!(value, Tjs2GetArg::Spread(_)));
+
+    if !has_spread {
+        let values = values.into_iter().map(|value| match value {
+            Tjs2GetArg::Value(value) => quote! {
+                #runtime_crate::ser::to(&(#value))?
+            },
+            Tjs2GetArg::Spread(_) => unreachable!(),
+        });
+        return quote! {
+            ::core::result::Result::Ok(#runtime_crate::Tjs2ArgsArray::new([#(#values),*]))
+        }
+        .into();
+    }
+
+    let values = values.into_iter().map(|value| match value {
+        Tjs2GetArg::Value(value) => quote! {
+            #values_ident.push(#runtime_crate::ser::to(&(#value))?);
+        },
+        Tjs2GetArg::Spread(iter) => quote! {
+            for #item in (#iter) {
+                #values_ident.push(#runtime_crate::ser::to(&#item)?);
+            }
+        },
+    });
+    quote! {{
+        let mut #values_ident = ::std::vec::Vec::new();
+        #(#values)*
+        ::core::result::Result::Ok(#runtime_crate::Tjs2ArgsVec::new(#values_ident))
+    }}
+    .into()
 }
 
 fn parse_case(case: &str) -> Case<'static> {

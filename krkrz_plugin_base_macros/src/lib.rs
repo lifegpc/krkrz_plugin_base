@@ -1,5 +1,6 @@
 use convert_case::{Case, Casing, ccase};
 use proc_macro::TokenStream;
+use proc_macro_crate::{FoundCrate, crate_name};
 use quote::quote;
 use syn::{
     Attribute, Error, FnArg, Ident, ImplItem, ImplItemFn, ItemFn, ItemImpl, LitStr, ReturnType,
@@ -8,6 +9,21 @@ use syn::{
     spanned::Spanned,
     token::{Comma, Eq},
 };
+
+/// Resolve the runtime crate from the manifest of the crate invoking this macro.
+///
+/// This allows downstream crates to rename their `krkrz_plugin_base` dependency.
+fn runtime_crate() -> proc_macro2::TokenStream {
+    match crate_name("krkrz_plugin_base")
+        .expect("`krkrz_plugin_base` must be a dependency of crates using these macros")
+    {
+        FoundCrate::Itself => quote!(crate),
+        FoundCrate::Name(name) => {
+            let ident = Ident::new(&name, proc_macro2::Span::call_site());
+            quote!(::#ident)
+        }
+    }
+}
 
 fn parse_case(case: &str) -> Case<'static> {
     let case = ccase!(snake, case);
@@ -95,10 +111,11 @@ impl Parse for RegisterVars {
 /// Generate a list static mut global variable to store original TJS variant
 pub fn generate_origin_static_block(input: TokenStream) -> TokenStream {
     let vars = parse_macro_input!(input as OriginStaticBlockVars).0;
+    let runtime_crate = runtime_crate();
     let streams: Vec<_> = vars.iter().map(|s| {
         let name = format!("ORIGIN_{}", ccase!(constant, s.to_string()));
         let name = Ident::new(&name, s.span());
-        quote!(static mut #name: *mut krkrz_plugin_base::tp_stub::iTJSDispatch2 = std::ptr::null_mut();)
+        quote!(static mut #name: *mut #runtime_crate::tp_stub::iTJSDispatch2 = std::ptr::null_mut();)
     }).collect();
     let stream = quote! {
         #(#streams)*
@@ -137,6 +154,7 @@ pub fn generate_origin_static_block(input: TokenStream) -> TokenStream {
 /// ```
 pub fn register_var(input: TokenStream) -> TokenStream {
     let vars = parse_macro_input!(input as RegisterVars).0;
+    let runtime_crate = runtime_crate();
     let ok_streams: Vec<_> = vars
         .iter()
         .map(|s| {
@@ -177,7 +195,7 @@ pub fn register_var(input: TokenStream) -> TokenStream {
         })
         .collect();
     let stream = quote! {{
-        use krkrz_plugin_base::tp_stub::*;
+        use #runtime_crate::tp_stub::*;
         let global = unsafe { TVPGetScriptDispatch() };
         if !global.is_null() {
             #(#ok_streams)*
@@ -196,6 +214,7 @@ pub fn register_var(input: TokenStream) -> TokenStream {
 /// See [register_var] for more information.
 pub fn unregister_var(input: TokenStream) -> TokenStream {
     let vars = parse_macro_input!(input as RegisterVars).0;
+    let runtime_crate = runtime_crate();
     let streams: Vec<_> = vars
         .iter()
         .map(|s| {
@@ -223,7 +242,7 @@ pub fn unregister_var(input: TokenStream) -> TokenStream {
         })
         .collect();
     let stream = quote! {{
-        use krkrz_plugin_base::tp_stub::*;
+        use #runtime_crate::tp_stub::*;
         let global = unsafe { TVPGetScriptDispatch() };
         if !global.is_null() {
             #(#streams)*
@@ -453,6 +472,7 @@ fn gen_param_stream(
     failure: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     use syn::Pat;
+    let runtime_crate = runtime_crate();
     let is_option = is_option_type(&t.ty);
     let name = match t.pat.as_ref() {
         Pat::Ident(idt) => idt.ident.clone(),
@@ -461,7 +481,7 @@ fn gen_param_stream(
     let serde = arg_uses_serde(&t.attrs, function_serde).unwrap();
     let convert = if serde {
         quote! {
-            match krkrz_plugin_base::de::from(p) {
+            match #runtime_crate::de::from(p) {
                 Ok(t) => t,
                 Err(e) => {
                     log!("Failed to deserialize param: {}", e);
@@ -1011,6 +1031,7 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
 /// ```
 pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemImpl);
+    let runtime_crate = runtime_crate();
     if let Err(error) = validate_serde_attrs(&input) {
         return error.into_compile_error().into();
     }
@@ -1635,9 +1656,9 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     let stream = quote! {
         #emitted_input
         static mut #classid_name: i32 = 0;
-        impl krkrz_plugin_base::Tjs2Class for #self_ty {
-            fn create_native_class() -> (i32, *mut krkrz_plugin_base::tp_stub::iTJSDispatch2) {
-                use krkrz_plugin_base::{tp_stub::*, *};
+        impl #runtime_crate::Tjs2Class for #self_ty {
+            fn create_native_class() -> (i32, *mut #runtime_crate::tp_stub::iTJSDispatch2) {
+                use #runtime_crate::{tp_stub::*, *};
                 #[repr(C)]
                 struct NativeInstatce {
                     base: iTJSNativeInstance,
@@ -1791,6 +1812,7 @@ pub fn tjs2_function(attrs: TokenStream, input: TokenStream) -> TokenStream {
     }
 
     let input = parse_macro_input!(input as ItemFn);
+    let runtime_crate = runtime_crate();
     if let Err(error) = validate_serde_attrs_fn(&input) {
         return error.into_compile_error().into();
     }
@@ -1891,8 +1913,8 @@ pub fn tjs2_function(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let stream = quote! {
         #emitted_input
 
-        #visibility fn #create_name() -> *mut krkrz_plugin_base::tp_stub::iTJSDispatch2 {
-            use krkrz_plugin_base::{tp_stub::*, *};
+        #visibility fn #create_name() -> *mut #runtime_crate::tp_stub::iTJSDispatch2 {
+            use #runtime_crate::{tp_stub::*, *};
 
             struct Wrapper {}
 

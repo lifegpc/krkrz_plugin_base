@@ -1,5 +1,6 @@
 #![cfg_attr(any(docsrs, feature = "unstable"), feature(doc_cfg))]
 pub mod args;
+pub mod r#async;
 #[cfg(feature = "com")]
 pub mod com;
 #[cfg(feature = "serde")]
@@ -20,6 +21,7 @@ use windows::Win32::System::Com;
 use windows_core::Interface;
 
 pub use args::{Tjs2ArgsArray, Tjs2ArgsVec};
+pub use r#async::AsyncExecutor;
 #[cfg(feature = "serde")]
 pub use krkrz_plugin_base_macros::tjs2_serde_get_args;
 pub use krkrz_plugin_base_macros::{

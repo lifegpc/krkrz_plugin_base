@@ -939,7 +939,7 @@ tjs_error TJS_INTF_METHOD
 
 static bool TJS_USERENTRY _CatchFuncCall(void *data, const tTVPExceptionDesc & desc)
 {
-	throw desc;
+	return false;
 }
 struct t_iTJSDispatch2_AddRef
 {
@@ -948,6 +948,7 @@ struct t_iTJSDispatch2_AddRef
 	t_iTJSDispatch2_AddRef(
 			iTJSDispatch2 * _this_
 			) :
+		_ret(0),
 		_this(_this_)	{;}
 
 };
@@ -974,6 +975,7 @@ struct t_iTJSDispatch2_Release
 	t_iTJSDispatch2_Release(
 			iTJSDispatch2 * _this_
 			) :
+		_ret(0),
 		_this(_this_)	{;}
 
 };
@@ -1014,6 +1016,7 @@ struct t_iTJSDispatch2_FuncCall
 			tTJSVariant **param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1072,6 +1075,7 @@ struct t_iTJSDispatch2_FuncCallByNum
 			tTJSVariant **param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -1125,6 +1129,7 @@ struct t_iTJSDispatch2_PropGet
 			tTJSVariant *result_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1173,6 +1178,7 @@ struct t_iTJSDispatch2_PropGetByNum
 			tTJSVariant *result_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -1220,6 +1226,7 @@ struct t_iTJSDispatch2_PropSet
 			const tTJSVariant *param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1268,6 +1275,7 @@ struct t_iTJSDispatch2_PropSetByNum
 			const tTJSVariant *param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -1313,6 +1321,7 @@ struct t_iTJSDispatch2_GetCount
 			tjs_uint32 *hint_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		result(result_),
 		membername(membername_),
@@ -1356,6 +1365,7 @@ struct t_iTJSDispatch2_GetCountByNum
 			tjs_int num_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		result(result_),
 		num(num_),
@@ -1398,6 +1408,7 @@ struct t_iTJSDispatch2_PropSetByVS
 			const tTJSVariant *param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1441,6 +1452,7 @@ struct t_iTJSDispatch2_EnumMembers
 			tTJSVariantClosure *callback_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		callback(callback_),
@@ -1483,6 +1495,7 @@ struct t_iTJSDispatch2_DeleteMember
 			tjs_uint32 *hint_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1526,6 +1539,7 @@ struct t_iTJSDispatch2_DeleteMemberByNum
 			tjs_int num_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -1568,6 +1582,7 @@ struct t_iTJSDispatch2_Invalidate
 			tjs_uint32 *hint_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1611,6 +1626,7 @@ struct t_iTJSDispatch2_InvalidateByNum
 			tjs_int num_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -1653,6 +1669,7 @@ struct t_iTJSDispatch2_IsValid
 			tjs_uint32 *hint_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1696,6 +1713,7 @@ struct t_iTJSDispatch2_IsValidByNum
 			tjs_int num_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -1744,6 +1762,7 @@ struct t_iTJSDispatch2_CreateNew
 			tTJSVariant **param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1802,6 +1821,7 @@ struct t_iTJSDispatch2_CreateNewByNum
 			tTJSVariant **param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -1845,6 +1865,7 @@ struct t_iTJSDispatch2_Reserved1
 	t_iTJSDispatch2_Reserved1(
 			iTJSDispatch2 * _this_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_)	{;}
 
 };
@@ -1881,6 +1902,7 @@ struct t_iTJSDispatch2_IsInstanceOf
 			const tjs_char *classname_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -1929,6 +1951,7 @@ struct t_iTJSDispatch2_IsInstanceOfByNum
 			const tjs_char *classname_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -1978,6 +2001,7 @@ struct t_iTJSDispatch2_Operation
 			const tTJSVariant *param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		membername(membername_),
@@ -2031,6 +2055,7 @@ struct t_iTJSDispatch2_OperationByNum
 			const tTJSVariant *param_,
 			iTJSDispatch2 *objthis_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -2077,6 +2102,7 @@ struct t_iTJSDispatch2_NativeInstanceSupport
 			tjs_int32 classid_,
 			iTJSNativeInstance **pointer_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		classid(classid_),
@@ -2117,6 +2143,7 @@ struct t_iTJSDispatch2_ClassInstanceInfo
 			tjs_uint num_,
 			tTJSVariant *value_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_),
 		flag(flag_),
 		num(num_),
@@ -2151,6 +2178,7 @@ struct t_iTJSDispatch2_Reserved2
 	t_iTJSDispatch2_Reserved2(
 			iTJSDispatch2 * _this_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_)	{;}
 
 };
@@ -2177,6 +2205,7 @@ struct t_iTJSDispatch2_Reserved3
 	t_iTJSDispatch2_Reserved3(
 			iTJSDispatch2 * _this_
 			) :
+		_ret(TJS_E_FAIL),
 		_this(_this_)	{;}
 
 };

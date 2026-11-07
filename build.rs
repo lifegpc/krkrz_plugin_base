@@ -53,4 +53,6 @@ fn main() {
         .file("src/tp_stub/tp_stub_wrapping.cpp")
         .compile("tp_stub");
     println!("cargo:rerun-if-changed=src/tp_stub/tp_stub.h");
+    println!("cargo:rerun-if-changed=src/tp_stub/tp_stub.cpp");
+    println!("cargo:rerun-if-changed=src/tp_stub/tp_stub_wrapping.cpp");
 }

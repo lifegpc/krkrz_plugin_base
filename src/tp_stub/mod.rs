@@ -1436,6 +1436,316 @@ impl iTJSDispatch2 {
     pub unsafe fn reserved3(&mut self) -> tjs_error {
         unsafe { ((*self.vtable_).iTJSDispatch2_Reserved3)(self) }
     }
+
+    #[inline(always)]
+    pub unsafe fn try_add_ref(&mut self) -> tjs_uint {
+        unsafe { Try_iTJSDispatch2_AddRef(self) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_release(&mut self) -> tjs_uint {
+        unsafe { Try_iTJSDispatch2_Release(self) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_func_call(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            Try_iTJSDispatch2_FuncCall(
+                self, flag, membername, hint, result, numparams, param, objthis,
+            )
+        }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_func_call_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            Try_iTJSDispatch2_FuncCallByNum(self, flag, num, result, numparams, param, objthis)
+        }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_prop_get(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_PropGet(self, flag, membername, hint, result, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_prop_get_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_PropGetByNum(self, flag, num, result, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_prop_set(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_PropSet(self, flag, membername, hint, param, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_prop_set_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_PropSetByNum(self, flag, num, param, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_get_count(
+        &mut self,
+        result: *mut tjs_int,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_GetCount(self, result, membername, hint, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_get_count_by_num(
+        &mut self,
+        result: *mut tjs_int,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_GetCountByNum(self, result, num, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_prop_set_by_vs(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *mut tTJSVariantString,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_PropSetByVS(self, flag, membername, param, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_enum_members(
+        &mut self,
+        flag: tjs_uint32,
+        callback: *mut tTJSVariantClosure,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_EnumMembers(self, flag, callback, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_delete_member(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_DeleteMember(self, flag, membername, hint, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_delete_member_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_DeleteMemberByNum(self, flag, num, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_invalidate(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_Invalidate(self, flag, membername, hint, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_invalidate_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_InvalidateByNum(self, flag, num, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_is_valid(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_IsValid(self, flag, membername, hint, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_is_valid_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_IsValidByNum(self, flag, num, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_create_new(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut *mut iTJSDispatch2,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            Try_iTJSDispatch2_CreateNew(
+                self, flag, membername, hint, result, numparams, param, objthis,
+            )
+        }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_create_new_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut *mut iTJSDispatch2,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe {
+            Try_iTJSDispatch2_CreateNewByNum(self, flag, num, result, numparams, param, objthis)
+        }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_reserved1(&mut self) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_Reserved1(self) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_is_instance_of(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        classname: *const tjs_char,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_IsInstanceOf(self, flag, membername, hint, classname, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_is_instance_of_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        classname: *const tjs_char,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_IsInstanceOfByNum(self, flag, num, classname, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_operation(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_Operation(self, flag, membername, hint, result, param, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_operation_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_OperationByNum(self, flag, num, result, param, objthis) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_native_instance_support(
+        &mut self,
+        flag: tjs_uint32,
+        classid: tjs_int32,
+        pointer: *mut *mut iTJSNativeInstance,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_NativeInstanceSupport(self, flag, classid, pointer) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_class_instance_info(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_uint,
+        value: *mut tTJSVariant,
+    ) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_ClassInstanceInfo(self, flag, num, value) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_reserved2(&mut self) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_Reserved2(self) }
+    }
+
+    #[inline(always)]
+    pub unsafe fn try_reserved3(&mut self) -> tjs_error {
+        unsafe { Try_iTJSDispatch2_Reserved3(self) }
+    }
 }
 
 impl iTJSNativeInstance {
@@ -4022,6 +4332,395 @@ impl tTJSVariantClosure {
         }
         unsafe {
             (*self.Object).operation_by_num(flag, num, result, param, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn try_func_call(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_func_call(
+                flag,
+                membername,
+                hint,
+                result,
+                numparams,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn try_func_call_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_func_call_by_num(
+                flag,
+                num,
+                result,
+                numparams,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn try_prop_get(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_prop_get(
+                flag,
+                membername,
+                hint,
+                result,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn try_prop_get_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_prop_get_by_num(flag, num, result, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn try_prop_set(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_prop_set(flag, membername, hint, param, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn try_prop_set_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_prop_set_by_num(flag, num, param, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn try_get_count(
+        &mut self,
+        result: *mut tjs_int,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_get_count(result, membername, hint, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn try_get_count_by_num(
+        &mut self,
+        result: *mut tjs_int,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe { (*self.Object).try_get_count_by_num(result, num, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn try_prop_set_by_vs(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *mut tTJSVariantString,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_prop_set_by_vs(flag, membername, param, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn try_enum_members(
+        &mut self,
+        flag: tjs_uint32,
+        callback: *mut tTJSVariantClosure,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe { (*self.Object).try_enum_members(flag, callback, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn try_delete_member(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_delete_member(flag, membername, hint, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn try_delete_member_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe { (*self.Object).try_delete_member_by_num(flag, num, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn try_invalidate(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_invalidate(flag, membername, hint, self.select_objthis(objthis))
+        }
+    }
+
+    pub unsafe fn try_invalidate_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe { (*self.Object).try_invalidate_by_num(flag, num, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn try_is_valid(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe { (*self.Object).try_is_valid(flag, membername, hint, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn try_is_valid_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe { (*self.Object).try_is_valid_by_num(flag, num, self.select_objthis(objthis)) }
+    }
+
+    pub unsafe fn try_create_new(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut *mut iTJSDispatch2,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_create_new(
+                flag,
+                membername,
+                hint,
+                result,
+                numparams,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn try_create_new_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut *mut iTJSDispatch2,
+        numparams: tjs_int,
+        param: *mut *mut tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_create_new_by_num(
+                flag,
+                num,
+                result,
+                numparams,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn try_is_instance_of(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        classname: *const tjs_char,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_is_instance_of(
+                flag,
+                membername,
+                hint,
+                classname,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn try_is_instance_of_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        classname: *const tjs_char,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_is_instance_of_by_num(
+                flag,
+                num,
+                classname,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn try_operation(
+        &mut self,
+        flag: tjs_uint32,
+        membername: *const tjs_char,
+        hint: *mut tjs_uint32,
+        result: *mut tTJSVariant,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_operation(
+                flag,
+                membername,
+                hint,
+                result,
+                param,
+                self.select_objthis(objthis),
+            )
+        }
+    }
+
+    pub unsafe fn try_operation_by_num(
+        &mut self,
+        flag: tjs_uint32,
+        num: tjs_int,
+        result: *mut tTJSVariant,
+        param: *const tTJSVariant,
+        objthis: *mut iTJSDispatch2,
+    ) -> tjs_error {
+        if self.Object.is_null() {
+            return TJS_E_FAIL;
+        }
+        unsafe {
+            (*self.Object).try_operation_by_num(
+                flag,
+                num,
+                result,
+                param,
+                self.select_objthis(objthis),
+            )
         }
     }
 }

@@ -641,7 +641,11 @@ fn gen_param_stream(
                         None
                     } else {
                         let p = unsafe { &mut *p };
+                        if p.is_void() {
+                            None
+                        } else {
                             Some(#convert)
+                        }
                     }
                 };
             }

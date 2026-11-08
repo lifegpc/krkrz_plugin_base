@@ -106,6 +106,10 @@ pub fn create_istream(name: &str, flags: u32) -> Option<Com::IStream> {
     }
 }
 
+/// Reference-counted smart pointer to the underlying Rust instance of a [`Tjs2Class`](trait@Tjs2Class).
+///
+/// Automatically calls `add_ref()` on the backing [`iTJSDispatch2`] object upon creation
+/// and `release()` when dropped.
 pub struct TjsClassRef<T> {
     obj: *mut iTJSDispatch2,
     inner: *mut T,
@@ -159,13 +163,48 @@ impl<T> Drop for TjsClassRef<T> {
     }
 }
 
+/// Trait implemented for Rust types annotated with [`#[Tjs2Class]`](macro@crate::Tjs2Class).
 pub trait Tjs2Class: Sized {
+    /// Registers the native class with TJS2 and returns `(class_id, class_dispatch_ptr)`.
     fn create_native_class() -> (i32, *mut iTJSDispatch2);
+
+    /// Creates a new TJS instance of this class initialized with the given Rust value `obj`.
+    ///
+    /// The native class must already be registered in the TJS global scope (matching the
+    /// class's `new` or `class_name` attribute). Returns an owned `*mut iTJSDispatch2`
+    /// with reference count incremented.
     fn create(obj: Self) -> *mut iTJSDispatch2;
+
+    /// Returns `true` if `obj` is a non-null `iTJSDispatch2` carrying a native instance
+    /// of this class (checked via its registered `classid`).
     fn is_instance_of(obj: *mut iTJSDispatch2) -> bool;
+
+    /// Returns `true` if `obj` is an object `tTJSVariant` carrying a native instance
+    /// of this class, or `false` if `obj` is not an object or belongs to another class.
     fn is_instance_of2(obj: &tTJSVariant) -> bool;
+
+    /// Borrows the underlying Rust instance from `obj`.
+    ///
+    /// The caller does not need to call `add_ref()` before calling this method; `get_ref`
+    /// increments the reference count of `obj` internally and decrements it when the
+    /// returned smart pointer is dropped.
+    ///
+    /// # Panics
+    /// Panics if `obj` is null, the native class has not been registered, `obj` is not
+    /// an instance of this class, or its native data is uninitialized / invalidated (`None`).
     fn get_ref(obj: *mut iTJSDispatch2)
     -> impl std::ops::Deref<Target = Self> + std::ops::DerefMut;
+
+    /// Borrows the underlying Rust instance from a [`tTJSVariant`].
+    ///
+    /// The caller does not need to call `add_ref()` before calling this method; `get_ref2`
+    /// increments the reference count of the underlying `iTJSDispatch2` internally and
+    /// decrements it when the returned smart pointer is dropped.
+    ///
+    /// # Panics
+    /// Panics if `obj` is not an object variant, the native class has not been registered,
+    /// `obj` is not an instance of this class, or its native data is uninitialized /
+    /// invalidated (`None`).
     fn get_ref2(obj: &mut tTJSVariant) -> impl std::ops::Deref<Target = Self> + std::ops::DerefMut;
 }
 

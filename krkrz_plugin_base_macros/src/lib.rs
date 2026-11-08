@@ -1042,7 +1042,10 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
 ///
 /// The macro implements [`krkrz_plugin_base::Tjs2Class`] for the target type.
 /// Call `Type::create_native_class()` and register the returned dispatch object with
-/// [`register_var`] to make the class available in the TJS global scope.
+/// [`register_var`] to make the class available in the TJS global scope. It also provides
+/// `Type::create(obj)`, `Type::is_instance_of(disp)`, `Type::is_instance_of2(var)`,
+/// `Type::get_ref(disp)`, and `Type::get_ref2(var)` for creating, checking, and borrowing
+/// native instances from Rust.
 ///
 /// # Class attributes
 ///

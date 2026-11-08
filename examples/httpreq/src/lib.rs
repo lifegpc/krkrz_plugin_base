@@ -1,6 +1,7 @@
 use anyhow::Result;
 use krkrz_plugin_base::{tp_stub::*, *};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::ptr;
 use tokio::runtime::{Builder, Runtime};
 
@@ -16,6 +17,47 @@ enum ResponseBody {
     Json(serde_json::Value),
 }
 
+struct OwnedResponse {
+    status: reqwest::StatusCode,
+    version: &'static str,
+    headers: reqwest::header::HeaderMap,
+    url: String,
+    remote_addr: Option<String>,
+    body: ResponseBody,
+}
+
+impl OwnedResponse {
+    fn as_simple_response(&self) -> SimpleResponse<'_> {
+        let mut headers = HashMap::with_capacity(self.headers.len());
+        for (name, value) in &self.headers {
+            let val = match value.to_str() {
+                Ok(s) => HeaderValue::Str(s),
+                Err(_) => HeaderValue::Bytes(value.as_bytes()),
+            };
+            headers.insert(name.as_str(), val);
+        }
+
+        let (text, bytes, json) = match &self.body {
+            ResponseBody::Bytes(b) => (None, Some(b.as_slice()), None),
+            ResponseBody::Text(t) => (Some(t.as_str()), None, None),
+            ResponseBody::Json(j) => (None, None, Some(j)),
+        };
+
+        SimpleResponse {
+            ok: self.status.is_success(),
+            code: self.status.as_u16(),
+            status: self.status.canonical_reason().unwrap_or(""),
+            version: self.version,
+            headers,
+            url: self.url.as_str(),
+            remote_addr: self.remote_addr.as_deref(),
+            text,
+            bytes,
+            json,
+        }
+    }
+}
+
 struct SendCallbacks {
     callback: tTJSVariantClosure,
     onerror: Option<tTJSVariantClosure>,
@@ -29,13 +71,10 @@ unsafe impl Send for SendCallbacks {}
 
 impl SendCallbacks {
     /// Must only be called on the krkrz window thread.
-    unsafe fn invoke_and_release(mut self, result: Result<ResponseBody>) {
-        let variant_res = result.and_then(|body| match body {
-            ResponseBody::Bytes(bytes) => {
-                Ok(tTJSVariant::from((bytes.as_ptr(), bytes.len() as tjs_uint)))
-            }
-            ResponseBody::Text(text) => Ok(tTJSVariant::from(text.as_str())),
-            ResponseBody::Json(json) => ser::to(&json).map_err(|e| anyhow::anyhow!("{e}")),
+    unsafe fn invoke_and_release(mut self, result: Result<OwnedResponse>) {
+        let variant_res = result.and_then(|resp| {
+            let simple = resp.as_simple_response();
+            ser::to(&simple).map_err(|e| anyhow::anyhow!("{e}"))
         });
 
         match variant_res {
@@ -86,7 +125,7 @@ struct HttpReq;
 
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ResponseType {
+enum ResponseType {
     Bytes,
     #[default]
     Text,
@@ -95,15 +134,64 @@ pub enum ResponseType {
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "snake_case", default)]
-pub struct GetConfig {
+struct GetConfig {
     #[serde(alias = "response_type")]
     pub res_type: ResponseType,
+    pub no_error_handle: bool,
+}
+
+fn serialize_bytes_slice<S: serde::Serializer>(
+    v: &[u8],
+    s: S,
+) -> std::result::Result<S::Ok, S::Error> {
+    s.serialize_bytes(v)
+}
+
+fn serialize_opt_bytes_slice<S: serde::Serializer>(
+    v: &Option<&[u8]>,
+    s: S,
+) -> std::result::Result<S::Ok, S::Error> {
+    match v {
+        Some(b) => s.serialize_bytes(b),
+        None => s.serialize_none(),
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+enum HeaderValue<'a> {
+    #[serde(serialize_with = "serialize_bytes_slice")]
+    Bytes(&'a [u8]),
+    Str(&'a str),
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SimpleResponse<'a> {
+    ok: bool,
+    /// Status code
+    code: u16,
+    /// Status code string
+    status: &'a str,
+    /// HTTP version string. eg. HTTP/1.1
+    version: &'a str,
+    headers: HashMap<&'a str, HeaderValue<'a>>,
+    url: &'a str,
+    remote_addr: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    text: Option<&'a str>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_opt_bytes_slice"
+    )]
+    bytes: Option<&'a [u8]>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    json: Option<&'a serde_json::Value>,
 }
 
 #[Tjs2Class]
 impl HttpReq {
     #[tjs(static_method)]
-    pub fn get(
+    fn get(
         url: String,
         #[tjs(serde)] config: Option<GetConfig>,
         callback: &mut tTJSVariant,
@@ -125,7 +213,9 @@ impl HttpReq {
             tTJSVariantClosure::new(clo.Object, clo.ObjThis)
         };
 
-        let res_type = config.unwrap_or_default().res_type;
+        let config = config.unwrap_or_default();
+        let res_type = config.res_type;
+        let no_error_handle = config.no_error_handle;
 
         let (runtime, executor) = unsafe {
             let rt = (&raw const RUNTIME)
@@ -149,23 +239,50 @@ impl HttpReq {
         }
 
         runtime.spawn(async move {
-            let result: Result<ResponseBody> = async {
-                let response = reqwest::get(&url).await?.error_for_status()?;
-                match res_type {
+            let result: Result<OwnedResponse> = async {
+                let response = reqwest::get(&url).await?;
+                let response = if no_error_handle {
+                    response
+                } else {
+                    response.error_for_status()?
+                };
+                let status = response.status();
+                let version = match response.version() {
+                    reqwest::Version::HTTP_09 => "HTTP/0.9",
+                    reqwest::Version::HTTP_10 => "HTTP/1.0",
+                    reqwest::Version::HTTP_11 => "HTTP/1.1",
+                    reqwest::Version::HTTP_2 => "HTTP/2.0",
+                    reqwest::Version::HTTP_3 => "HTTP/3.0",
+                    _ => "HTTP/1.1",
+                };
+                let headers = response.headers().clone();
+                let resp_url = response.url().to_string();
+                let remote_addr = response.remote_addr().map(|addr| addr.to_string());
+
+                let body = match res_type {
                     ResponseType::Bytes => {
                         let bytes = response.bytes().await?;
-                        Ok(ResponseBody::Bytes(bytes.to_vec()))
+                        ResponseBody::Bytes(bytes.to_vec())
                     }
                     ResponseType::Text => {
                         let text = response.text().await?;
-                        Ok(ResponseBody::Text(text))
+                        ResponseBody::Text(text)
                     }
                     ResponseType::Json => {
                         let bytes = response.bytes().await?;
                         let json = serde_json::from_slice::<serde_json::Value>(&bytes)?;
-                        Ok(ResponseBody::Json(json))
+                        ResponseBody::Json(json)
                     }
-                }
+                };
+
+                Ok(OwnedResponse {
+                    status,
+                    version,
+                    headers,
+                    url: resp_url,
+                    remote_addr,
+                    body,
+                })
             }
             .await;
 

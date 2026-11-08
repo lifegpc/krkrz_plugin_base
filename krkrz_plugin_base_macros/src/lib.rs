@@ -631,42 +631,22 @@ fn gen_param_stream(
         }
     };
     if is_option {
-        if serde {
-            quote! {
-                let #name = if numparams <= (#i as tjs_int) {
+        quote! {
+            let #name = if numparams <= (#i as tjs_int) {
+                None
+            } else {
+                let p = unsafe { *param.add(#i) };
+                if p.is_null() {
                     None
                 } else {
-                    let p = unsafe { *param.add(#i) };
-                    if p.is_null() {
+                    let p = unsafe { &mut *p };
+                    if p.is_void() {
                         None
                     } else {
-                        let p = unsafe { &mut *p };
-                        if p.is_void() {
-                            None
-                        } else {
-                            Some(#convert)
-                        }
+                        Some(#convert)
                     }
-                };
-            }
-        } else {
-            quote! {
-                let #name = if numparams <= (#i as tjs_int) {
-                    None
-                } else {
-                    let p = unsafe { *param.add(#i) };
-                    if p.is_null() {
-                        None
-                    } else {
-                        let p = unsafe { &mut *p };
-                        if p.is_void() {
-                            None
-                        } else {
-                            #convert
-                        }
-                    }
-                };
-            }
+                }
+            };
         }
     } else {
         quote! {

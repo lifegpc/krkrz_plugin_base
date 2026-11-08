@@ -195,18 +195,19 @@ impl HttpReq {
         url: String,
         #[tjs(serde)] config: Option<GetConfig>,
         callback: &mut tTJSVariant,
-        onerror: &mut tTJSVariant,
+        onerror: Option<&mut tTJSVariant>,
     ) -> Result<()> {
         if !callback.is_object() {
             anyhow::bail!("callback must be a callable object");
         }
-        let onerror_closure = if onerror.is_void() {
-            None
-        } else if onerror.is_object() {
-            let clo = onerror.as_object_closure();
-            Some(tTJSVariantClosure::new(clo.Object, clo.ObjThis))
-        } else {
-            anyhow::bail!("onerror must be a callable object or void");
+        let onerror_closure = match onerror {
+            None => None,
+            Some(onerror) if onerror.is_void() => None,
+            Some(onerror) if onerror.is_object() => {
+                let clo = onerror.as_object_closure();
+                Some(tTJSVariantClosure::new(clo.Object, clo.ObjThis))
+            }
+            Some(_) => anyhow::bail!("onerror must be a callable object or void"),
         };
         let callback_closure = {
             let clo = callback.as_object_closure();

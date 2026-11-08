@@ -1170,35 +1170,35 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
         &format!("CID_{}", ccase!(constant, &class_name.value())),
         class_name.span(),
     );
-    let constructors = if let Some(main) = constructor {
-        let classname_prefix = LitStr::new(
-            &format!("pointer.{}:", class_name.value()),
-            class_name.span(),
-        );
-        let len = classname_prefix.value().len();
-        main_constructor = quote! {
-            if numparams == 1 {
-                if !param.is_null() {
-                   let p = unsafe { *param };
-                    if !p.is_null() {
-                        let p = unsafe { &mut *p };
-                        if p.is_string() {
-                            if let Ok(s) = String::to_param(p) {
-                                if s.starts_with(#classname_prefix) {
-                                    let s = &s[#len..];
-                                    if let Ok(pos) = s.parse::<usize>() {
-                                        let pointer = (std::ptr::null_mut() as *mut #self_ty).with_addr(pos);
-                                        let p = unsafe { Box::from_raw(pointer) };
-                                        return Ok(p);
-                                    }
+    let classname_prefix = LitStr::new(
+        &format!("pointer.{}:", class_name.value()),
+        class_name.span(),
+    );
+    let len = classname_prefix.value().len();
+    main_constructor = quote! {
+        if numparams == 1 {
+            if !param.is_null() {
+                let p = unsafe { *param };
+                if !p.is_null() {
+                    let p = unsafe { &mut *p };
+                    if p.is_string() {
+                        if let Ok(s) = String::to_param(p) {
+                            if s.starts_with(#classname_prefix) {
+                                let s = &s[#len..];
+                                if let Ok(pos) = s.parse::<usize>() {
+                                    let pointer = (std::ptr::null_mut() as *mut #self_ty).with_addr(pos);
+                                    let p = unsafe { Box::from_raw(pointer) };
+                                    return Ok(p);
                                 }
                             }
                         }
                     }
                 }
             }
-            #main_constructor
-        };
+        }
+        #main_constructor
+    };
+    let constructors = if let Some(main) = constructor {
         let constructors: Vec<_> = find_constructors(&input.items, main, &self_ty).iter().map(|s| {
             let g = gen_constructor(s, &self_ty);
             let mut bident = s.sig.ident.clone();
@@ -1769,127 +1769,220 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     }
     let stream = quote! {
         #emitted_input
-        static mut #classid_name: i32 = 0;
-        impl #runtime_crate::Tjs2Class for #self_ty {
-            fn create_native_class() -> (i32, *mut #runtime_crate::tp_stub::iTJSDispatch2) {
-                use #runtime_crate::{tp_stub::*, *};
-                #[repr(C)]
-                struct NativeInstatce {
-                    base: iTJSNativeInstance,
-                    inner: Option<Box<#self_ty>>,
+        static mut #classid_name: i32 = -1;
+        const _: () = {
+            #[repr(C)]
+            struct NativeInstatce {
+                base: #runtime_crate::tp_stub::iTJSNativeInstance,
+                inner: Option<Box<#self_ty>>,
+            }
+            impl NativeInstatce {
+                unsafe extern "C" fn new() -> *mut #runtime_crate::tp_stub::iTJSNativeInstance {
+                    use #runtime_crate::{tp_stub::*, *};
+                    static VTABLE: iTJSNativeInstance__bindgen_vtable = iTJSNativeInstance__bindgen_vtable {
+                        iTJSNativeInstance_Construct: NativeInstatce::construct,
+                        iTJSNativeInstance_Invalidate: NativeInstatce::invalidate,
+                        iTJSNativeInstance_Destruct: NativeInstatce::destruct,
+                    };
+                    let boxed = Box::new(Self {
+                        base: iTJSNativeInstance { vtable_: &VTABLE },
+                        inner: None,
+                    });
+                    Box::into_raw(boxed) as *mut iTJSNativeInstance
                 }
-                impl NativeInstatce {
-                    unsafe extern "C" fn new() -> *mut iTJSNativeInstance {
-                        static VTABLE: iTJSNativeInstance__bindgen_vtable = iTJSNativeInstance__bindgen_vtable {
-                            iTJSNativeInstance_Construct: NativeInstatce::construct,
-                            iTJSNativeInstance_Invalidate: NativeInstatce::invalidate,
-                            iTJSNativeInstance_Destruct: NativeInstatce::destruct,
-                        };
-                        let boxed = Box::new(Self {
-                            base: iTJSNativeInstance { vtable_: &VTABLE },
-                            inner: None,
-                        });
-                        Box::into_raw(boxed) as *mut iTJSNativeInstance
+                fn constructor(
+                    numparams: #runtime_crate::tp_stub::tjs_int,
+                    param: *mut *mut #runtime_crate::tp_stub::tTJSVariant,
+                    tjs_obj: *mut #runtime_crate::tp_stub::iTJSDispatch2,
+                ) -> Result<Box<#self_ty>, i32> {
+                    use #runtime_crate::{tp_stub::*, *};
+                    #main_constructor
+                }
+                unsafe extern "C" fn construct(
+                    this: *mut #runtime_crate::tp_stub::iTJSNativeInstance,
+                    numparams: #runtime_crate::tp_stub::tjs_int,
+                    param: *mut *mut #runtime_crate::tp_stub::tTJSVariant,
+                    tjs_obj: *mut #runtime_crate::tp_stub::iTJSDispatch2,
+                ) -> #runtime_crate::tp_stub::tjs_error {
+                    use #runtime_crate::{tp_stub::*, *};
+                    let self_ = unsafe { &mut *(this as *mut NativeInstatce) };
+                    let hr = match Self::constructor(numparams, param, tjs_obj) {
+                        Ok(data) => {
+                            self_.inner = Some(data);
+                            0
+                        }
+                        Err(err) => {
+                            err
+                        }
+                    };
+                    if TJS_SUCCEEDED(hr) {
+                        unsafe { TVPPluginGlobalRefCount += 1 };
+                    } else {
+                        // Workround fix leak when error returned from construct
+                        let _boxed = unsafe { Box::from_raw(this as *mut NativeInstatce) };
                     }
-                    fn constructor(numparams: tjs_int, param: *mut *mut tTJSVariant, tjs_obj: *mut iTJSDispatch2) -> Result<Box<#self_ty>, i32> {
-                        #main_constructor
+                    hr
+                }
+                unsafe extern "C" fn invalidate(this: *mut #runtime_crate::tp_stub::iTJSNativeInstance) {
+                    let self_ = unsafe { &mut *(this as *mut NativeInstatce) };
+                    if let Some(s) = self_.inner.as_mut() {
+                        #invalidate
                     }
-                    unsafe extern "C" fn construct(
-                        this: *mut iTJSNativeInstance,
+                    self_.inner.take();
+                }
+                unsafe extern "C" fn destruct(this: *mut #runtime_crate::tp_stub::iTJSNativeInstance) {
+                    use #runtime_crate::tp_stub::*;
+                    let _box = unsafe { Box::from_raw(this as *mut NativeInstatce) };
+                    unsafe { TVPPluginGlobalRefCount -= 1 };
+                }
+            }
+            impl #runtime_crate::Tjs2Class for #self_ty {
+                fn create_native_class() -> (i32, *mut #runtime_crate::tp_stub::iTJSDispatch2) {
+                    use #runtime_crate::{tp_stub::*, *};
+                    let classname = ttstr::from(#class_name);
+                    let classobj =
+                        unsafe { TJSCreateNativeClassForPlugin(&classname as *const _, Some(NativeInstatce::new)) }
+                            as *mut tTJSNativeClass;
+                    let name = classname.c_str();
+                    let classid = unsafe { TJSRegisterNativeClass(name) };
+                    unsafe { #classid_name = classid };
+                    unsafe { TJSNativeClassSetClassID(classobj, classid); }
+                    unsafe extern "C" fn ncm_construct(
+                        _result: *mut tTJSVariant,
                         numparams: tjs_int,
                         param: *mut *mut tTJSVariant,
                         tjs_obj: *mut iTJSDispatch2,
                     ) -> tjs_error {
-                        let self_ = unsafe { &mut *(this as *mut NativeInstatce) };
-                        let hr = match Self::constructor(numparams, param, tjs_obj) {
-                            Ok(data) => {
-                                self_.inner = Some(data);
-                                0
-                            }
-                            Err(err) => {
-                                err
-                            }
-                        };
-                        if TJS_SUCCEEDED(hr) {
-                            unsafe { TVPPluginGlobalRefCount += 1 };
-                        } else {
-                            // Workround fix leak when error returned from construct
-                            let _boxed = unsafe { Box::from_raw(this as *mut NativeInstatce) };
+                        let mut _this: *mut iTJSNativeInstance = std::ptr::null_mut();
+                        let hr =
+                            unsafe { (*tjs_obj).native_instance_support(0x00000002, #classid_name, &mut _this) };
+                        if TJS_FAILED(hr) {
+                            return TJS_E_NATIVECLASSCRASH;
                         }
-                        hr
-                    }
-                    unsafe extern "C" fn invalidate(this: *mut iTJSNativeInstance) {
-                        let self_ = unsafe { &mut *(this as *mut NativeInstatce) };
-                        if let Some(s) = self_.inner.as_mut() {
-                            #invalidate
+                        if _this.is_null() {
+                            return TJS_E_NATIVECLASSCRASH;
                         }
-                        self_.inner.take();
+                        unsafe { (*_this).construct(numparams, param, tjs_obj) }
                     }
-                    unsafe extern "C" fn destruct(this: *mut iTJSNativeInstance) {
-                        let _box = unsafe { Box::from_raw(this as *mut NativeInstatce) };
-                        unsafe { TVPPluginGlobalRefCount -= 1 };
+                    unsafe extern "C" fn ncm_finalize(
+                        _result: *mut tTJSVariant,
+                        _numparams: tjs_int,
+                        _param: *mut *mut tTJSVariant,
+                        _tjs_obj: *mut iTJSDispatch2,
+                    ) -> tjs_error {
+                        TJS_S_OK
                     }
+                    let fname = tjs_w!("finalize");
+                    unsafe {
+                        TJSNativeClassRegisterNCM(
+                            classobj,
+                            fname,
+                            TJSCreateNativeClassMethod(Some(ncm_finalize)) as *mut _,
+                            name,
+                            tTJSNativeInstanceType_nitMethod,
+                            0,
+                        );
+                        TJSNativeClassRegisterNCM(
+                            classobj,
+                            name,
+                            TJSCreateNativeClassConstructor(Some(ncm_construct)) as *mut _,
+                            name,
+                            tTJSNativeInstanceType_nitMethod,
+                            0,
+                        );
+                    }
+                    #constructors
+                    #(#static_member_streams)*
+                    #(#methods_streams)*
+                    #(#static_method_streams)*
+                    #(#prop_streams)*
+                    (classid, classobj as *mut iTJSDispatch2)
                 }
-                let classname = ttstr::from(#class_name);
-                let classobj =
-                    unsafe { TJSCreateNativeClassForPlugin(&classname as *const _, Some(NativeInstatce::new)) }
-                        as *mut tTJSNativeClass;
-                let name = classname.c_str();
-                let classid = unsafe { TJSRegisterNativeClass(name) };
-                unsafe { #classid_name = classid };
-                unsafe { TJSNativeClassSetClassID(classobj, classid); }
-                unsafe extern "C" fn ncm_construct(
-                    _result: *mut tTJSVariant,
-                    numparams: tjs_int,
-                    param: *mut *mut tTJSVariant,
-                    tjs_obj: *mut iTJSDispatch2,
-                ) -> tjs_error {
+
+                fn create(obj: Self) -> *mut #runtime_crate::tp_stub::iTJSDispatch2 {
+                    use #runtime_crate::{tp_stub::*, *};
+                    let p = Box::into_raw(Box::new(obj));
+                    let arg = ttstr::from(&format!(
+                        "return new {}(\"{}{}\");",
+                        #new,
+                        #classname_prefix,
+                        p.addr()
+                    ));
+                    let mut result = tTJSVariant::new();
+                    unsafe {
+                        TVPExecuteScript(&arg, &mut result);
+                    }
+                    result.as_object()
+                }
+
+                fn is_instance_of(obj: *mut #runtime_crate::tp_stub::iTJSDispatch2) -> bool {
+                    use #runtime_crate::{tp_stub::*, *};
+                    if obj.is_null() {
+                        return false;
+                    }
+                    let classid = unsafe { #classid_name };
+                    if classid < 0 {
+                        return false;
+                    }
                     let mut _this: *mut iTJSNativeInstance = std::ptr::null_mut();
-                    let hr =
-                        unsafe { (*tjs_obj).native_instance_support(0x00000002, #classid_name, &mut _this) };
-                    if TJS_FAILED(hr) {
-                        return TJS_E_NATIVECLASSCRASH;
+                    let hr = unsafe {
+                        (*obj).native_instance_support(
+                            TJS_NIS_GETINSTANCE as u32,
+                            classid,
+                            &mut _this,
+                        )
+                    };
+                    TJS_SUCCEEDED(hr) && !_this.is_null()
+                }
+
+                fn is_instance_of2(obj: &#runtime_crate::tp_stub::tTJSVariant) -> bool {
+                    if !obj.is_object() {
+                        return false;
                     }
-                    if _this.is_null() {
-                        return TJS_E_NATIVECLASSCRASH;
+                    Self::is_instance_of(obj.as_object_no_add_ref())
+                }
+
+                fn get_ref(
+                    obj: *mut #runtime_crate::tp_stub::iTJSDispatch2,
+                ) -> impl std::ops::Deref<Target = Self> + std::ops::DerefMut {
+                    use #runtime_crate::{tp_stub::*, *};
+                    if obj.is_null() {
+                        panic!("iTJSDispatch2 pointer is null");
                     }
-                    unsafe { (*_this).construct(numparams, param, tjs_obj) }
+                    let classid = unsafe { #classid_name };
+                    if classid < 0 {
+                        panic!("Native class {} is not registered", #class_name);
+                    }
+                    let mut _this: *mut iTJSNativeInstance = std::ptr::null_mut();
+                    let hr = unsafe {
+                        (*obj).native_instance_support(
+                            TJS_NIS_GETINSTANCE as u32,
+                            classid,
+                            &mut _this,
+                        )
+                    };
+                    if TJS_FAILED(hr) || _this.is_null() {
+                        panic!("Object is not an instance of {}", #class_name);
+                    }
+                    let self_ = unsafe { &mut *(_this as *mut NativeInstatce) };
+                    let inner = self_
+                        .inner
+                        .as_mut()
+                        .expect("Native instance is not initialized")
+                        .as_mut() as *mut #self_ty;
+                    unsafe { #runtime_crate::TjsClassRef::new(obj, inner) }
                 }
-                unsafe extern "C" fn ncm_finalize(
-                    _result: *mut tTJSVariant,
-                    _numparams: tjs_int,
-                    _param: *mut *mut tTJSVariant,
-                    _tjs_obj: *mut iTJSDispatch2,
-                ) -> tjs_error {
-                    TJS_S_OK
+
+                fn get_ref2(
+                    obj: &mut #runtime_crate::tp_stub::tTJSVariant,
+                ) -> impl std::ops::Deref<Target = Self> + std::ops::DerefMut {
+                    if !obj.is_object() {
+                        panic!("tTJSVariant is not an object");
+                    }
+                    Self::get_ref(obj.as_object_no_add_ref())
                 }
-                let fname = tjs_w!("finalize");
-                unsafe {
-                    TJSNativeClassRegisterNCM(
-                        classobj,
-                        fname,
-                        TJSCreateNativeClassMethod(Some(ncm_finalize)) as *mut _,
-                        name,
-                        tTJSNativeInstanceType_nitMethod,
-                        0,
-                    );
-                    TJSNativeClassRegisterNCM(
-                        classobj,
-                        name,
-                        TJSCreateNativeClassConstructor(Some(ncm_construct)) as *mut _,
-                        name,
-                        tTJSNativeInstanceType_nitMethod,
-                        0,
-                    );
-                }
-                #constructors
-                #(#static_member_streams)*
-                #(#methods_streams)*
-                #(#static_method_streams)*
-                #(#prop_streams)*
-                (classid, classobj as *mut iTJSDispatch2)
             }
-        }
+        };
     };
     stream.into()
 }

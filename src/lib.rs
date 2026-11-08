@@ -106,8 +106,67 @@ pub fn create_istream(name: &str, flags: u32) -> Option<Com::IStream> {
     }
 }
 
-pub trait Tjs2Class {
+pub struct TjsClassRef<T> {
+    obj: *mut iTJSDispatch2,
+    inner: *mut T,
+}
+
+impl<T> TjsClassRef<T> {
+    /// Creates a new `TjsClassRef` and increments the reference count of `obj`.
+    ///
+    /// # Safety
+    /// `obj` and `inner` must be valid non-null pointers, and `inner` must remain valid
+    /// for as long as `obj` has a positive reference count.
+    pub unsafe fn new(obj: *mut iTJSDispatch2, inner: *mut T) -> Self {
+        unsafe {
+            (*obj).add_ref();
+        }
+        Self { obj, inner }
+    }
+}
+
+impl<T> std::ops::Deref for TjsClassRef<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.inner }
+    }
+}
+
+impl<T> std::ops::DerefMut for TjsClassRef<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.inner }
+    }
+}
+
+impl<T> AsRef<T> for TjsClassRef<T> {
+    fn as_ref(&self) -> &T {
+        self
+    }
+}
+
+impl<T> AsMut<T> for TjsClassRef<T> {
+    fn as_mut(&mut self) -> &mut T {
+        self
+    }
+}
+
+impl<T> Drop for TjsClassRef<T> {
+    fn drop(&mut self) {
+        unsafe {
+            (*self.obj).release();
+        }
+    }
+}
+
+pub trait Tjs2Class: Sized {
     fn create_native_class() -> (i32, *mut iTJSDispatch2);
+    fn create(obj: Self) -> *mut iTJSDispatch2;
+    fn is_instance_of(obj: *mut iTJSDispatch2) -> bool;
+    fn is_instance_of2(obj: &tTJSVariant) -> bool;
+    fn get_ref(obj: *mut iTJSDispatch2)
+    -> impl std::ops::Deref<Target = Self> + std::ops::DerefMut;
+    fn get_ref2(obj: &mut tTJSVariant) -> impl std::ops::Deref<Target = Self> + std::ops::DerefMut;
 }
 
 #[cfg(test)]

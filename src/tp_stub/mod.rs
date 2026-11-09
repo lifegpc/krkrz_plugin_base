@@ -1746,6 +1746,88 @@ impl iTJSDispatch2 {
     pub unsafe fn try_reserved3(&mut self) -> tjs_error {
         unsafe { Try_iTJSDispatch2_Reserved3(self) }
     }
+
+    #[inline(always)]
+    pub fn get(
+        &mut self,
+        key: &str,
+    ) -> Result<Option<tTJSVariant>, GetItemError<crate::param::TypeError>> {
+        let mut re = tTJSVariant::new();
+        let s = ttstr::from(key);
+        let obj = self as *mut _;
+        let r = unsafe { self.prop_get(0, s.c_str(), ptr::null_mut(), &mut re, obj) };
+        if TJS_FAILED(r) {
+            return Err(GetItemError::GetItem(key.to_string()));
+        }
+        Ok(if re.is_void() { None } else { Some(re) })
+    }
+
+    #[inline(always)]
+    pub fn with_get<T, E, F, R>(&mut self, key: &str, f: F) -> Result<Option<R>, GetItemError<E>>
+    where
+        E: std::fmt::Display + std::fmt::Debug,
+        T: for<'a> crate::TjsParam<'a, Error = E>,
+        F: FnOnce(T) -> R,
+    {
+        let mut re = tTJSVariant::new();
+        let s = ttstr::from(key);
+        let obj = self as *mut _;
+        let r = unsafe { self.prop_get(0, s.c_str(), ptr::null_mut(), &mut re, obj) };
+        if TJS_FAILED(r) {
+            return Err(GetItemError::GetItem(key.to_string()));
+        }
+        if re.is_void() {
+            return Ok(None);
+        }
+        Ok(Some(f(T::to_param(&mut re)?)))
+    }
+
+    #[cfg(feature = "serde")]
+    #[inline(always)]
+    pub fn with_get_serde<T, F, R>(
+        &mut self,
+        key: &str,
+        f: F,
+    ) -> Result<Option<R>, GetItemError<crate::de::DeserError>>
+    where
+        T: for<'a> serde::Deserialize<'a>,
+        F: FnOnce(T) -> R,
+    {
+        let mut re = tTJSVariant::new();
+        let s = ttstr::from(key);
+        let obj = self as *mut _;
+        let r = unsafe { self.prop_get(0, s.c_str(), ptr::null_mut(), &mut re, obj) };
+        if TJS_FAILED(r) {
+            return Err(GetItemError::GetItem(key.to_string()));
+        }
+        if re.is_void() {
+            return Ok(None);
+        }
+        Ok(Some(f(crate::de::from(&mut re)?)))
+    }
+}
+
+#[derive(Debug)]
+pub enum GetItemError<E: std::fmt::Display + std::fmt::Debug> {
+    Item(E),
+    GetItem(String),
+}
+
+impl<E: std::fmt::Display + std::fmt::Debug> std::error::Error for GetItemError<E> {}
+
+impl<E: std::fmt::Display + std::fmt::Debug> From<E> for GetItemError<E> {
+    fn from(value: E) -> Self {
+        Self::Item(value)
+    }
+}
+
+impl<E: std::fmt::Display + std::fmt::Debug> std::fmt::Display for GetItemError<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Item(typ) => std::fmt::Display::fmt(typ, f),
+            Self::GetItem(ind) => write!(f, "Failed to get item {}", ind),
+        }
+    }
 }
 
 impl iTJSNativeInstance {

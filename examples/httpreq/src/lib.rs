@@ -4,12 +4,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ptr;
 use tokio::runtime::{Builder, Runtime};
+use tokio_util::sync::CancellationToken;
 
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
 static mut RUNTIME: Option<Runtime> = None;
 static mut EXECUTOR: Option<AsyncExecutor> = None;
 
-generate_origin_static_block!(http_req);
+generate_origin_static_block!(http_req, abort_signal);
 
 enum ResponseBody {
     Bytes(Vec<u8>),
@@ -58,30 +59,40 @@ impl OwnedResponse {
     }
 }
 
+enum RequestOutcome {
+    Completed(Result<OwnedResponse>),
+    Aborted,
+}
+
 struct SendCallbacks {
     callback: tTJSVariantClosure,
     onerror: Option<tTJSVariantClosure>,
+    signal_obj: Option<*mut iTJSDispatch2>,
 }
 
-// SAFETY: `callback` and `onerror` have their refcounts incremented on the
-// krkrz window thread before being wrapped in `SendCallbacks`, and are only
+// SAFETY: `callback`, `onerror`, and `signal_obj` have their refcounts incremented
+// on the krkrz window thread before being wrapped in `SendCallbacks`, and are only
 // ever accessed, invoked, and released inside `AsyncExecutor::execute` on the
 // krkrz window thread.
 unsafe impl Send for SendCallbacks {}
 
 impl SendCallbacks {
     /// Must only be called on the krkrz window thread.
-    unsafe fn invoke_and_release(mut self, result: Result<OwnedResponse>) {
-        let variant_res = result.and_then(|resp| {
-            let simple = resp.as_simple_response();
-            ser::to(&simple).map_err(|e| anyhow::anyhow!("{e}"))
-        });
+    unsafe fn invoke_and_release(mut self, outcome: RequestOutcome) {
+        let is_aborted = matches!(outcome, RequestOutcome::Aborted)
+            || self
+                .signal_obj
+                .is_some_and(|sig_obj| AbortSignal::get_ref(sig_obj).get_aborted());
 
-        match variant_res {
-            Ok(variant) => {
-                let mut args = Tjs2ArgsArray::new([variant]);
+        if is_aborted {
+            if let Some(onerror) = self.onerror.as_mut() {
+                let reason_var = self
+                    .signal_obj
+                    .and_then(|sig_obj| AbortSignal::get_ref(sig_obj).reason.clone())
+                    .unwrap_or_else(|| tTJSVariant::from("Aborted"));
+                let mut args = Tjs2ArgsArray::new([reason_var]);
                 let _ = unsafe {
-                    self.callback.try_func_call(
+                    onerror.try_func_call(
                         0,
                         ptr::null(),
                         ptr::null_mut(),
@@ -92,12 +103,17 @@ impl SendCallbacks {
                     )
                 };
             }
-            Err(err) => {
-                if let Some(onerror) = self.onerror.as_mut() {
-                    let errmsg = err.to_string();
-                    let mut args = tjs2_get_args!(errmsg.as_str());
+        } else if let RequestOutcome::Completed(result) = outcome {
+            let variant_res = result.and_then(|resp| {
+                let simple = resp.as_simple_response();
+                ser::to(&simple).map_err(|e| anyhow::anyhow!("{e}"))
+            });
+
+            match variant_res {
+                Ok(variant) => {
+                    let mut args = Tjs2ArgsArray::new([variant]);
                     let _ = unsafe {
-                        onerror.try_func_call(
+                        self.callback.try_func_call(
                             0,
                             ptr::null(),
                             ptr::null_mut(),
@@ -108,12 +124,34 @@ impl SendCallbacks {
                         )
                     };
                 }
+                Err(err) => {
+                    if let Some(onerror) = self.onerror.as_mut() {
+                        let errmsg = err.to_string();
+                        let mut args = tjs2_get_args!(errmsg.as_str());
+                        let _ = unsafe {
+                            onerror.try_func_call(
+                                0,
+                                ptr::null(),
+                                ptr::null_mut(),
+                                ptr::null_mut(),
+                                args.len() as tjs_int,
+                                args.as_mut_ptr(),
+                                ptr::null_mut(),
+                            )
+                        };
+                    }
+                }
             }
         }
 
         self.callback.release();
         if let Some(mut onerror) = self.onerror.take() {
             onerror.release();
+        }
+        if let Some(sig_obj) = self.signal_obj.take() {
+            unsafe {
+                (*sig_obj).release();
+            }
         }
         unsafe {
             TVPPluginGlobalRefCount -= 1;
@@ -130,14 +168,6 @@ enum ResponseType {
     #[default]
     Text,
     Json,
-}
-
-#[derive(Debug, Clone, Default, Deserialize)]
-#[serde(rename_all = "snake_case", default)]
-struct GetConfig {
-    #[serde(alias = "response_type")]
-    pub res_type: ResponseType,
-    pub no_error_handle: bool,
 }
 
 fn serialize_bytes_slice<S: serde::Serializer>(
@@ -188,12 +218,40 @@ struct SimpleResponse<'a> {
     json: Option<&'a serde_json::Value>,
 }
 
+struct AbortSignal {
+    pub token: CancellationToken,
+    pub reason: Option<tTJSVariant>,
+}
+
+#[Tjs2Class]
+impl AbortSignal {
+    pub fn new() -> Self {
+        Self {
+            token: CancellationToken::new(),
+            reason: None,
+        }
+    }
+
+    pub fn get_aborted(&self) -> bool {
+        self.token.is_cancelled()
+    }
+
+    pub fn get_reason(&self) -> tTJSVariant {
+        self.reason.clone().unwrap_or_default()
+    }
+
+    pub fn abort(&mut self, reason: Option<&mut tTJSVariant>) {
+        self.reason = reason.map(|s| s.clone());
+        self.token.cancel();
+    }
+}
+
 #[Tjs2Class]
 impl HttpReq {
     #[tjs(static_method)]
     fn get(
         url: String,
-        #[tjs(serde)] config: Option<GetConfig>,
+        config: Option<&mut tTJSVariant>,
         callback: &mut tTJSVariant,
         onerror: Option<&mut tTJSVariant>,
     ) -> Result<()> {
@@ -213,10 +271,38 @@ impl HttpReq {
             let clo = callback.as_object_closure();
             tTJSVariantClosure::new(clo.Object, clo.ObjThis)
         };
-
-        let config = config.unwrap_or_default();
-        let res_type = config.res_type;
-        let no_error_handle = config.no_error_handle;
+        let config_obj = match config.as_ref() {
+            Some(c) => {
+                let a = c.as_object_no_add_ref();
+                if a.is_null() {
+                    anyhow::bail!("config is not a object.");
+                }
+                Some(unsafe { &mut (*a) })
+            }
+            None => None,
+        };
+        let mut res_type = ResponseType::default();
+        let mut no_error_handle = false;
+        let mut signal = None;
+        if let Some(c) = config_obj {
+            c.with_get_serde("response_type", |s| {
+                res_type = s;
+            })?;
+            c.with_get_serde("no_error_handle", |s| {
+                no_error_handle = s;
+            })?;
+            signal = c.get("signal")?;
+        }
+        let (cancel_token, signal_obj) = match signal.as_mut() {
+            Some(signal) => {
+                if !AbortSignal::is_instance_of2(signal) {
+                    anyhow::bail!("signal is not an AbortSignal object.");
+                }
+                let token = AbortSignal::get_ref2(signal).token.clone();
+                (Some(token), Some(signal.as_object()))
+            }
+            None => (None, None),
+        };
 
         let (runtime, executor) = unsafe {
             let rt = (&raw const RUNTIME)
@@ -234,13 +320,14 @@ impl HttpReq {
         let callbacks = SendCallbacks {
             callback: callback_closure,
             onerror: onerror_closure,
+            signal_obj,
         };
         unsafe {
             TVPPluginGlobalRefCount += 1;
         }
 
         runtime.spawn(async move {
-            let result: Result<OwnedResponse> = async {
+            let req_fut = async {
                 let response = reqwest::get(&url).await?;
                 let response = if no_error_handle {
                     response
@@ -284,12 +371,19 @@ impl HttpReq {
                     remote_addr,
                     body,
                 })
-            }
-            .await;
+            };
+
+            let outcome = match cancel_token {
+                Some(token) => match token.run_until_cancelled(req_fut).await {
+                    Some(res) => RequestOutcome::Completed(res),
+                    None => RequestOutcome::Aborted,
+                },
+                None => RequestOutcome::Completed(req_fut.await),
+            };
 
             executor
                 .execute(move || unsafe {
-                    callbacks.invoke_and_release(result);
+                    callbacks.invoke_and_release(outcome);
                 })
                 .await;
         });
@@ -317,7 +411,8 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     }
 
     let http_req = HttpReq::create_native_class().1;
-    register_var!(http_req);
+    let abort_signal = AbortSignal::create_native_class().1;
+    register_var!(http_req, abort_signal);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -328,7 +423,7 @@ unsafe extern "system" fn v2_unlink() -> i32 {
         log!("[httpreq]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    unregister_var!(http_req);
+    unregister_var!(http_req, abort_signal);
     unsafe {
         RUNTIME = None;
         EXECUTOR = None;

@@ -1,6 +1,6 @@
 # httpreq
 
-An asynchronous HTTP client plugin example for Kirikiri Z (`krkrz`), built with `krkrz_plugin_base`, `tokio`, and `reqwest`. All callbacks are dispatched back onto the Kirikiri Z window thread via `AsyncExecutor`.
+An asynchronous HTTP and WebSocket client plugin example for Kirikiri Z (`krkrz`), built with `krkrz_plugin_base`, `tokio`, `reqwest`, and `tokio-tungstenite`. All callbacks are dispatched back onto the Kirikiri Z window thread via `AsyncExecutor`.
 
 ## Loading the Plugin
 
@@ -8,7 +8,7 @@ An asynchronous HTTP client plugin example for Kirikiri Z (`krkrz`), built with 
 Plugins.link("httpreq.dll");
 ```
 
-Linking the plugin registers `HttpReq` and `AbortSignal` in the TJS global scope.
+Linking the plugin registers `HttpReq`, `AbortSignal`, and `WebSocket` in the TJS global scope.
 
 ---
 
@@ -71,6 +71,48 @@ Creates a new `AbortSignal` instance.
 
 - **`abort(reason)`**: Marks the signal as aborted and cancels any in-flight requests associated with it.
   - `reason` (`Variant`, optional): Custom abort reason forwarded to `onerror`. Defaults to `"Aborted"` in `onerror` when omitted.
+
+---
+
+### `WebSocket`
+
+An asynchronous WebSocket client supporting text and binary (`Octet`) messages.
+
+#### `new WebSocket(url)`
+
+Creates a new `WebSocket` instance and initiates an asynchronous connection handshake.
+
+- **`url`** (`String`): The WebSocket URL (`ws://...` or `wss://...`).
+
+#### Properties
+
+- **`url`** (`String`, read-only): The URL passed to the constructor.
+- **`readyState`** (`String`, read-only): Current state of the WebSocket connection:
+  - `"connecting"`: Handshake is in progress.
+  - `"open"`: Connection is established and ready to send/receive messages.
+  - `"closing"`: Closing handshake has been initiated.
+  - `"closed"`: Connection is closed or failed to open.
+
+#### Event Callbacks
+
+Assign functions to these properties on the `WebSocket` instance (all invoked on the Kirikiri Z window thread):
+
+- **`onopen`** (`Function()`): Called when the WebSocket handshake succeeds and `readyState` becomes `"open"`.
+- **`onmessage`** (`Function(message)`): Called when a message is received from the server:
+  - `message` is a `String` for text frames, or an `Octet` for binary frames.
+- **`onclose`** (`Function(code, reason)`): Called when the connection is closed:
+  - `code` (`Integer`): The WebSocket close status code (defaults to `1005` if no `CloseFrame` was received).
+  - `reason` (`String`): The close reason string (defaults to `""` if none).
+- **`onerror`** (`Function(error)`): Called when a connection, read, or write error occurs:
+  - `error` (`String`): Error description.
+
+#### Methods
+
+- **`send(data)`**: Queues a message to be sent over the open WebSocket connection.
+  - `data` (`String` | `Octet`): Sends a text frame when given a `String`, or a binary frame when given an `Octet`. Throws an exception if `data` is any other type or if `readyState` is not `"open"`.
+- **`close(code, reason)`**: Initiates the WebSocket closing handshake.
+  - `code` (`Integer`, optional): Close status code (`u16`, defaults to `1000` when `reason` is provided without `code`).
+  - `reason` (`String`, optional): Human-readable close reason.
 
 ---
 
@@ -153,4 +195,38 @@ HttpReq.get(
 signal.abort("User cancelled the request");
 Debug.message("Is aborted:", signal.aborted); // true
 Debug.message("Reason:", signal.reason);       // "User cancelled the request"
+```
+
+### 5. WebSocket Client (Text & Binary Messages)
+
+```tjs
+var ws = new WebSocket("wss://echo.websocket.org");
+
+ws.onopen = function() {
+    Debug.message("Connected! readyState:", ws.readyState); // "open"
+
+    // Send a text message
+    ws.send("Hello, WebSocket!");
+
+    // Send a binary message (Octet)
+    ws.send(<% 48 65 6c 6c 6f %>);
+} incontextof global;
+
+ws.onmessage = function(msg) {
+    if (typeof msg == "String") {
+        Debug.message("Received text:", msg);
+    } else if (typeof msg == "Octet") {
+        Debug.message("Received binary length:", msg.length);
+        // Close the connection gracefully after receiving the binary echo
+        ws.close(1000, "Done");
+    }
+} incontextof global;
+
+ws.onclose = function(code, reason) {
+    Debug.message("Closed:", code, reason, "readyState:", ws.readyState); // "closed"
+} incontextof global;
+
+ws.onerror = function(err) {
+    Debug.message("WebSocket error:", err);
+} incontextof global;
 ```

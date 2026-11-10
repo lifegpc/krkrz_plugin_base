@@ -510,6 +510,26 @@ fn arg_uses_serde(attrs: &[Attribute], function_serde: bool) -> syn::Result<bool
     Ok(false)
 }
 
+fn arg_is_this(attrs: &[Attribute]) -> syn::Result<bool> {
+    for attr in attrs {
+        if attr.path().is_ident("tjs") {
+            let mut is_this = false;
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("this") {
+                    is_this = true;
+                    Ok(())
+                } else {
+                    Ok(())
+                }
+            })?;
+            if is_this {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
 fn validate_serde_attrs(input: &ItemImpl) -> syn::Result<()> {
     if cfg!(feature = "serde") {
         return Ok(());
@@ -838,47 +858,57 @@ fn is_result_type(ty: &syn::Type) -> bool {
     false
 }
 
-fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStream {
-    use syn::{Pat, ReturnType};
+fn gen_fn_params<'a>(
+    typed_args: impl Iterator<Item = &'a syn::PatType>,
+    function_serde: bool,
+    failure: proc_macro2::TokenStream,
+) -> (
+    usize,
+    Vec<proc_macro2::TokenStream>,
+    Vec<proc_macro2::TokenStream>,
+) {
+    use syn::Pat;
     let mut min_args = 0;
-    for (i, arg) in f.sig.inputs.iter().enumerate() {
-        let t = match arg {
-            FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
-            FnArg::Typed(t) => t,
+    let mut param_idx = 0usize;
+    let mut streams = Vec::new();
+    let mut args = Vec::new();
+
+    for t in typed_args {
+        let name = match t.pat.as_ref() {
+            Pat::Ident(idt) => idt.ident.clone(),
+            _ => panic!("Unsupported name decalre of argument."),
         };
-        if !is_option_type(&t.ty) {
-            min_args = i + 1;
-        }
-    }
-    let function_serde = FnTjsAttributes::parse(&f.attrs).unwrap().serde;
-    let streams: Vec<_> = f
-        .sig
-        .inputs
-        .iter()
-        .enumerate()
-        .map(|(i, arg)| match arg {
-            FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
-            FnArg::Typed(t) => {
-                gen_param_stream(t, i, function_serde, quote!(Err(TJS_E_INVALIDPARAM)))
+        if arg_is_this(&t.attrs).unwrap() {
+            streams.push(quote! {
+                let #name = tjs_obj;
+            });
+        } else {
+            if !is_option_type(&t.ty) {
+                min_args = param_idx + 1;
             }
-        })
-        .collect();
-    let args: Vec<_> = f
-        .sig
-        .inputs
-        .iter()
-        .map(|arg| {
-            let t = match arg {
-                FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
-                FnArg::Typed(t) => t,
-            };
-            let name = match t.pat.as_ref() {
-                Pat::Ident(idt) => idt.ident.clone(),
-                _ => panic!("Unsupported name decalre of argument."),
-            };
-            quote!(#name,)
-        })
-        .collect();
+            streams.push(gen_param_stream(
+                t,
+                param_idx,
+                function_serde,
+                failure.clone(),
+            ));
+            param_idx += 1;
+        }
+        args.push(quote!(#name,));
+    }
+
+    (min_args, streams, args)
+}
+
+fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStream {
+    use syn::ReturnType;
+    let function_serde = FnTjsAttributes::parse(&f.attrs).unwrap().serde;
+    let typed_args = f.sig.inputs.iter().map(|arg| match arg {
+        FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
+        FnArg::Typed(t) => t,
+    });
+    let (min_args, streams, args) =
+        gen_fn_params(typed_args, function_serde, quote!(Err(TJS_E_INVALIDPARAM)));
     let name = f.sig.ident.clone();
     let output_type = match &f.sig.output {
         ReturnType::Default => panic!("constructor mut return something."),
@@ -911,6 +941,17 @@ fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStr
     }
 }
 
+fn non_this_typed_arg_count(f: &ImplItemFn) -> usize {
+    f.sig
+        .inputs
+        .iter()
+        .filter(|arg| match arg {
+            FnArg::Receiver(_) => false,
+            FnArg::Typed(t) => !arg_is_this(&t.attrs).unwrap(),
+        })
+        .count()
+}
+
 fn find_get_prop_func<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplItemFn> {
     let mut data = Vec::new();
     for item in items {
@@ -924,15 +965,15 @@ fn find_get_prop_func<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a
                     data.push(f);
                     continue;
                 }
-                if f.sig.inputs.len() != 1 {
-                    continue;
-                }
                 if !f
                     .sig
                     .inputs
                     .first()
                     .is_some_and(|f| matches!(f, FnArg::Receiver(_)))
                 {
+                    continue;
+                }
+                if non_this_typed_arg_count(f) != 0 {
                     continue;
                 }
                 if returns_self_or_result_self(&f.sig.output, self_ty) {
@@ -962,10 +1003,10 @@ fn find_setter_for_getter<'a>(items: &'a [ImplItem], getter_name: &str) -> Optio
                     continue;
                 }
                 if f.sig.ident == setter_name {
-                    if f.sig.inputs.len() >= 2 {
-                        if matches!(f.sig.inputs.first(), Some(FnArg::Receiver(_))) {
-                            return Some(f);
-                        }
+                    if matches!(f.sig.inputs.first(), Some(FnArg::Receiver(_)))
+                        && non_this_typed_arg_count(f) >= 1
+                    {
+                        return Some(f);
                     }
                 }
             }
@@ -991,16 +1032,16 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
                 }
                 // Exclude convention-based property getters (handled by find_get_prop_func)
                 if !attr.method
-                    && f.sig.inputs.len() == 1
                     && matches!(f.sig.inputs.first(), Some(FnArg::Receiver(_)))
+                    && non_this_typed_arg_count(f) == 0
                     && f.sig.ident.to_string().starts_with("get_")
                 {
                     continue;
                 }
                 // Exclude convention-based property setters (handled by find_setter_for_getter)
                 if !attr.method
-                    && f.sig.inputs.len() >= 2
                     && matches!(f.sig.inputs.first(), Some(FnArg::Receiver(_)))
+                    && non_this_typed_arg_count(f) >= 1
                     && f.sig.ident.to_string().starts_with("set_")
                 {
                     let suffix = f
@@ -1099,6 +1140,8 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
 ///   `upper_flat`, `pascal`, `upper_camel`, `camel`, `lower`, `upper`, `title`, and `sentence`.
 /// - `serde` deserializes parameters through `krkrz_plugin_base::de::from`. It requires the
 ///   crate's `serde` feature and may be placed on a function or on an individual parameter.
+/// - `this` on a function parameter passes the raw `tjs_obj` (`*mut iTJSDispatch2`)
+///   instead of reading a TJS call argument.
 ///
 /// Parameters use [`krkrz_plugin_base::TjsParam`] conversion unless `serde` is enabled. A
 /// `Result<T, E>` returned from a constructor, method, property getter, or static method is
@@ -1313,7 +1356,6 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
     let methods_streams: Vec<_> = find_methods(&input.items, &self_ty)
         .into_iter()
         .map(|s| {
-            use syn::Pat;
             let attrs = FnTjsAttributes::parse(&s.attrs).unwrap();
             let mut bident = Ident::new(&s.sig.ident.to_string(), s.sig.ident.span());
             let ident = Ident::new(
@@ -1349,50 +1391,13 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             } else {
                 quote!((*result).assign(re);)
             };
-            let mut min_args = 0;
-            for (i, arg) in s.sig.inputs.iter().skip(1).enumerate() {
-                let t = match arg {
-                    FnArg::Receiver(_) => panic!("params can not have a self argument."),
-                    FnArg::Typed(t) => t,
-                };
-                if !is_option_type(&t.ty) {
-                    min_args = i + 1;
-                }
-            }
             let function_serde = attrs.serde;
-            let streams: Vec<_> = s
-                .sig
-                .inputs
-                .iter()
-                .skip(1)
-                .enumerate()
-                .map(|(i, arg)| match arg {
-                    FnArg::Receiver(_) => panic!("params can not have a self argument."),
-                    FnArg::Typed(t) => gen_param_stream(
-                        t,
-                        i,
-                        function_serde,
-                        quote!(TJS_E_INVALIDPARAM),
-                    ),
-                })
-                .collect();
-            let args: Vec<_> = s
-                .sig
-                .inputs
-                .iter()
-                .skip(1)
-                .map(|arg| {
-                    let t = match arg {
-                        FnArg::Receiver(_) => panic!("params can not have a self argument."),
-                        FnArg::Typed(t) => t,
-                    };
-                    let name = match t.pat.as_ref() {
-                        Pat::Ident(idt) => idt.ident.clone(),
-                        _ => panic!("Unsupported name decalre of argument."),
-                    };
-                    quote!(#name,)
-                })
-                .collect();
+            let typed_args = s.sig.inputs.iter().skip(1).map(|arg| match arg {
+                FnArg::Receiver(_) => panic!("params can not have a self argument."),
+                FnArg::Typed(t) => t,
+            });
+            let (min_args, streams, args) =
+                gen_fn_params(typed_args, function_serde, quote!(TJS_E_INVALIDPARAM));
             quote! {
                 unsafe extern "C" fn #ident(
                     result: *mut tTJSVariant,
@@ -1471,7 +1476,6 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 if !is_explicit && !is_auto {
                     return None;
                 }
-                use syn::Pat;
                 let mut bident = Ident::new(&s.sig.ident.to_string(), s.sig.ident.span());
                 let ident = Ident::new(
                     &format!("ncm_{}", s.sig.ident.to_string()),
@@ -1501,53 +1505,19 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 } else {
                     quote!()
                 };
-                let mut min_args = 0;
-                for (i, arg) in s.sig.inputs.iter().enumerate() {
-                    let t = match arg {
-                        FnArg::Typed(t) => t,
-                        _ => panic!("static_method can not have a self argument."),
-                    };
-                    if !is_option_type(&t.ty) {
-                        min_args = i + 1;
-                    }
-                }
                 let function_serde = attrs.serde;
-                let streams: Vec<_> = s
-                    .sig
-                    .inputs
-                    .iter()
-                    .enumerate()
-                    .map(|(i, arg)| match arg {
-                        FnArg::Typed(t) => {
-                            gen_param_stream(t, i, function_serde, quote!(TJS_E_INVALIDPARAM))
-                        }
-                        FnArg::Receiver(_) => {
-                            panic!("static_method can not have a self argument.")
-                        }
-                    })
-                    .collect();
-                let args: Vec<_> = s
-                    .sig
-                    .inputs
-                    .iter()
-                    .map(|arg| {
-                        let t = match arg {
-                            FnArg::Typed(t) => t,
-                            _ => panic!("static_method can not have a self argument."),
-                        };
-                        let name = match t.pat.as_ref() {
-                            Pat::Ident(idt) => idt.ident.clone(),
-                            _ => panic!("Unsupported name decalre of argument."),
-                        };
-                        quote!(#name,)
-                    })
-                    .collect();
+                let typed_args = s.sig.inputs.iter().map(|arg| match arg {
+                    FnArg::Typed(t) => t,
+                    FnArg::Receiver(_) => panic!("static_method can not have a self argument."),
+                });
+                let (min_args, streams, args) =
+                    gen_fn_params(typed_args, function_serde, quote!(TJS_E_INVALIDPARAM));
                 Some(quote! {
                     unsafe extern "C" fn #ident(
                         result: *mut tTJSVariant,
                         numparams: tjs_int,
                         param: *mut *mut tTJSVariant,
-                        _tjs_obj: *mut iTJSDispatch2,
+                        tjs_obj: *mut iTJSDispatch2,
                     ) -> tjs_error {
                         if numparams < (#min_args as tjs_int) {
                             return TJS_E_BADPARAMCOUNT;
@@ -1607,6 +1577,16 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
         } else {
             quote!()
         };
+        let getter_args: Vec<_> = s
+            .sig
+            .inputs
+            .iter()
+            .skip(1)
+            .map(|arg| match arg {
+                FnArg::Typed(t) if arg_is_this(&t.attrs).unwrap() => quote!(tjs_obj,),
+                _ => panic!("get_prop can only have self and #[tjs(this)] parameters"),
+            })
+            .collect();
         let getter_stream = quote! {
             unsafe extern "C" fn #ident(
                 result: *mut tTJSVariant,
@@ -1627,7 +1607,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 let self_ = unsafe { &mut *(_this as *mut NativeInstatce) };
                 let re = match self_.inner.as_mut() {
                     Some(s) => {
-                        s.#oident()
+                        s.#oident(#(#getter_args)*)
                     }
                     None => {
                         log!("Data is invalidated.");
@@ -1645,14 +1625,31 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             let name_str = s.sig.ident.to_string();
             let prop_name = name_str.strip_prefix("get_").unwrap_or(&name_str);
             let set_ident = Ident::new(&format!("ncm_set_{}", prop_name), setter_fn.sig.ident.span());
-            let value_arg = match setter_fn.sig.inputs.iter().nth(1) {
-                Some(FnArg::Typed(t)) => t,
-                _ => panic!("Setter must have a value parameter"),
-            };
+            let value_arg = setter_fn
+                .sig
+                .inputs
+                .iter()
+                .skip(1)
+                .find_map(|arg| match arg {
+                    FnArg::Typed(t) if !arg_is_this(&t.attrs).unwrap() => Some(t),
+                    _ => None,
+                })
+                .expect("Setter must have a value parameter");
             let value_name = match value_arg.pat.as_ref() {
                 syn::Pat::Ident(idt) => idt.ident.clone(),
                 _ => panic!("Unsupported parameter pattern in setter"),
             };
+            let setter_args: Vec<_> = setter_fn
+                .sig
+                .inputs
+                .iter()
+                .skip(1)
+                .map(|arg| match arg {
+                    FnArg::Typed(t) if arg_is_this(&t.attrs).unwrap() => quote!(tjs_obj,),
+                    FnArg::Typed(_) => quote!(#value_name,),
+                    FnArg::Receiver(_) => panic!("Setter can not have multiple self arguments"),
+                })
+                .collect();
             let soident = setter_fn.sig.ident.clone();
             let setter_output_type = &setter_fn.sig.output;
             let setter_is_result = match setter_output_type {
@@ -1663,7 +1660,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 let invoke = quote! {
                     let re = match self_.inner.as_mut() {
                         Some(s) => {
-                            s.#soident(#value_name)
+                            s.#soident(#(#setter_args)*)
                         }
                         None => {
                             log!("Data is invalidated.");
@@ -1685,7 +1682,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 let invoke = quote! {
                     match self_.inner.as_mut() {
                         Some(s) => {
-                            s.#soident(#value_name);
+                            s.#soident(#(#setter_args)*);
                         }
                         None => {
                             log!("Data is invalidated.");

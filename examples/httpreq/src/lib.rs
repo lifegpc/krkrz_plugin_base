@@ -1,16 +1,24 @@
 use anyhow::Result;
+use futures_util::{SinkExt, StreamExt};
 use krkrz_plugin_base::{tp_stub::*, *};
+use reqwest::header::{CONNECTION, SEC_WEBSOCKET_KEY, SEC_WEBSOCKET_VERSION, UPGRADE};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ptr;
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError, TryLockResult};
 use tokio::runtime::{Builder, Runtime};
+use tokio::sync::mpsc::UnboundedSender;
+use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::protocol::CloseFrame;
+use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
 use tokio_util::sync::CancellationToken;
 
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
 static mut RUNTIME: Option<Runtime> = None;
 static mut EXECUTOR: Option<AsyncExecutor> = None;
 
-generate_origin_static_block!(http_req, abort_signal);
+generate_origin_static_block!(http_req, abort_signal, web_socket);
 
 enum ResponseBody {
     Bytes(Vec<u8>),
@@ -392,6 +400,534 @@ impl HttpReq {
     }
 }
 
+struct AsyncMutexGuard<T, F> {
+    inner: Arc<Mutex<T>>,
+    fut: Option<F>,
+    sleep: std::pin::Pin<Box<tokio::time::Sleep>>,
+    interval: std::time::Duration,
+}
+
+impl<T, F, R> Future for AsyncMutexGuard<T, F>
+where
+    F: for<'a> FnOnce(TryLockResult<MutexGuard<'a, T>>) -> R + std::marker::Unpin,
+{
+    type Output = R;
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let this = self.get_mut();
+
+        match this.inner.try_lock() {
+            Err(TryLockError::WouldBlock) => {
+                if this.sleep.as_mut().poll(cx).is_ready() {
+                    let next_deadline = tokio::time::Instant::now() + this.interval;
+                    this.sleep.as_mut().reset(next_deadline);
+                    let _ = this.sleep.as_mut().poll(cx);
+                }
+                std::task::Poll::Pending
+            }
+            other => {
+                let fut = this
+                    .fut
+                    .take()
+                    .expect("AsyncMutexGuard polled after completion");
+                std::task::Poll::Ready(fut(other))
+            }
+        }
+    }
+}
+trait MutexExt<T> {
+    fn lock_async<F, R>(&self, f: F) -> AsyncMutexGuard<T, F>
+    where
+        F: for<'a> FnOnce(TryLockResult<MutexGuard<'a, T>>) -> R + std::marker::Unpin;
+
+    fn lock_async_delayed<F, R>(
+        &self,
+        interval: std::time::Duration,
+        f: F,
+    ) -> AsyncMutexGuard<T, F>
+    where
+        F: for<'a> FnOnce(TryLockResult<MutexGuard<'a, T>>) -> R + std::marker::Unpin;
+}
+
+impl<T> MutexExt<T> for Arc<Mutex<T>> {
+    fn lock_async<F, R>(&self, f: F) -> AsyncMutexGuard<T, F>
+    where
+        F: for<'a> FnOnce(TryLockResult<MutexGuard<'a, T>>) -> R + std::marker::Unpin,
+    {
+        self.lock_async_delayed(std::time::Duration::from_millis(5), f)
+    }
+
+    fn lock_async_delayed<F, R>(&self, interval: std::time::Duration, f: F) -> AsyncMutexGuard<T, F>
+    where
+        F: for<'a> FnOnce(TryLockResult<MutexGuard<'a, T>>) -> R + std::marker::Unpin,
+    {
+        AsyncMutexGuard {
+            inner: self.clone(),
+            fut: Some(f),
+            sleep: Box::pin(tokio::time::sleep(interval)),
+            interval,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum WebSocketReadyState {
+    #[default]
+    Connecting,
+    Open,
+    Closing,
+    Closed,
+}
+
+enum WsCommand {
+    Send(Message),
+    Flush,
+    Close(Option<CloseFrame>),
+}
+
+struct WebSocketState {
+    sender: Option<UnboundedSender<WsCommand>>,
+    ready_state: WebSocketReadyState,
+}
+
+struct WebSocketTjsObj(*mut iTJSDispatch2);
+
+impl WebSocketTjsObj {
+    pub fn new(obj: *mut iTJSDispatch2) -> Self {
+        if !obj.is_null() {
+            unsafe { (*obj).add_ref() };
+        }
+        Self(obj)
+    }
+
+    pub fn on_open(&self) {
+        if self.0.is_null() {
+            return;
+        }
+        let t = unsafe { &mut (*self.0) };
+        let mut val = tTJSVariant::new();
+        let re = unsafe { t.prop_get(0, tjs_w!("onopen"), ptr::null_mut(), &mut val, self.0) };
+        if TJS_FAILED(re) || !val.is_object() {
+            return;
+        }
+        let v = val.as_object_closure();
+        let mut v = tTJSVariantClosure::new(v.Object, v.ObjThis);
+        let _ = unsafe {
+            v.try_func_call(
+                0,
+                ptr::null(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                0,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        };
+        v.release();
+    }
+
+    pub fn on_message(&self, msg: tTJSVariant) {
+        if self.0.is_null() {
+            return;
+        }
+        let t = unsafe { &mut (*self.0) };
+        let mut val = tTJSVariant::new();
+        let re = unsafe { t.prop_get(0, tjs_w!("onmessage"), ptr::null_mut(), &mut val, self.0) };
+        if TJS_FAILED(re) || !val.is_object() {
+            return;
+        }
+        let v = val.as_object_closure();
+        let mut v = tTJSVariantClosure::new(v.Object, v.ObjThis);
+        let mut args = Tjs2ArgsArray::new([msg]);
+        let _ = unsafe {
+            v.try_func_call(
+                0,
+                ptr::null(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                args.len() as i32,
+                args.as_mut_ptr(),
+                ptr::null_mut(),
+            )
+        };
+        v.release();
+    }
+
+    pub fn on_close(&self, code: u16, reason: String) {
+        if self.0.is_null() {
+            return;
+        }
+        let t = unsafe { &mut (*self.0) };
+        let mut val = tTJSVariant::new();
+        let re = unsafe { t.prop_get(0, tjs_w!("onclose"), ptr::null_mut(), &mut val, self.0) };
+        if TJS_FAILED(re) || !val.is_object() {
+            return;
+        }
+        let v = val.as_object_closure();
+        let mut v = tTJSVariantClosure::new(v.Object, v.ObjThis);
+        let mut args = tjs2_get_args!(code as i64, reason);
+        let _ = unsafe {
+            v.try_func_call(
+                0,
+                ptr::null(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                args.len() as i32,
+                args.as_mut_ptr(),
+                ptr::null_mut(),
+            )
+        };
+        v.release();
+    }
+
+    pub fn on_error(&self, e: String) {
+        if self.0.is_null() {
+            return;
+        }
+        let t = unsafe { &mut (*self.0) };
+        let mut val = tTJSVariant::new();
+        let re = unsafe { t.prop_get(0, tjs_w!("onerror"), ptr::null_mut(), &mut val, self.0) };
+        if TJS_FAILED(re) || !val.is_object() {
+            return;
+        }
+        let v = val.as_object_closure();
+        let mut v = tTJSVariantClosure::new(v.Object, v.ObjThis);
+        let mut args = tjs2_get_args!(e);
+        let _ = unsafe {
+            v.try_func_call(
+                0,
+                ptr::null(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                args.len() as i32,
+                args.as_mut_ptr(),
+                ptr::null_mut(),
+            )
+        };
+        v.release();
+    }
+}
+
+impl Drop for WebSocketTjsObj {
+    fn drop(&mut self) {
+        if !self.0.is_null() {
+            unsafe { (*self.0).release() };
+        }
+    }
+}
+
+impl Clone for WebSocketTjsObj {
+    fn clone(&self) -> Self {
+        if !self.0.is_null() {
+            unsafe { (*self.0).add_ref() };
+        }
+        Self(self.0)
+    }
+}
+
+unsafe impl Send for WebSocketTjsObj {}
+
+struct WebSocket {
+    state: Arc<Mutex<WebSocketState>>,
+    url: String,
+}
+
+impl Drop for WebSocket {
+    fn drop(&mut self) {
+        if let Ok(mut guard) = self.state.lock() {
+            guard.sender = None;
+        }
+    }
+}
+
+fn convert_ws_to_http_url(raw_url: &str) -> Result<reqwest::Url, anyhow::Error> {
+    let mut url = reqwest::Url::parse(raw_url)?;
+    match url.scheme() {
+        "ws" => {
+            let _ = url.set_scheme("http");
+        }
+        "wss" => {
+            let _ = url.set_scheme("https");
+        }
+        _ => {}
+    }
+    Ok(url)
+}
+
+#[Tjs2Class]
+impl WebSocket {
+    fn new(#[tjs(this)] tjs_this: *mut iTJSDispatch2, url: String) -> Result<Self> {
+        let state = Arc::new(Mutex::new(WebSocketState {
+            sender: None,
+            ready_state: WebSocketReadyState::Connecting,
+        }));
+        let this = Self {
+            state: state.clone(),
+            url: url.clone(),
+        };
+        let rt = unsafe {
+            (&raw const RUNTIME)
+                .as_ref()
+                .and_then(|opt| opt.as_ref())
+                .ok_or_else(|| anyhow::anyhow!("tokio runtime is not initialized"))?
+        };
+        let rt_handle = rt.handle().clone();
+        let exec = unsafe {
+            (&raw const EXECUTOR)
+                .as_ref()
+                .and_then(|opt| opt.as_ref())
+                .cloned()
+                .ok_or_else(|| anyhow::anyhow!("AsyncExecutor is not initialized"))?
+        };
+        let tjs_this = WebSocketTjsObj::new(tjs_this);
+        rt.spawn(async move {
+            let fut = async {
+                let key = tokio_tungstenite::tungstenite::handshake::client::generate_key();
+                let client = reqwest::Client::builder().http1_only().build()?;
+                let response = client
+                    .get(convert_ws_to_http_url(&url)?)
+                    .header(CONNECTION, "Upgrade")
+                    .header(UPGRADE, "websocket")
+                    .header(SEC_WEBSOCKET_VERSION, "13")
+                    .header(SEC_WEBSOCKET_KEY, key)
+                    .send()
+                    .await?;
+                if response.status() != reqwest::StatusCode::SWITCHING_PROTOCOLS {
+                    anyhow::bail!(
+                        "Failed to upgrade protocols to websocket: {}",
+                        response.status()
+                    );
+                }
+                let upgraded_stream = response.upgrade().await?;
+                Ok(WebSocketStream::from_raw_socket(
+                    upgraded_stream,
+                    tokio_tungstenite::tungstenite::protocol::Role::Client,
+                    None,
+                )
+                .await)
+            };
+            let re = fut.await;
+            match re {
+                Err(e) => {
+                    state
+                        .lock_async(|f| {
+                            f.unwrap().ready_state = WebSocketReadyState::Closed;
+                        })
+                        .await;
+                    exec.execute(move || {
+                        tjs_this.on_error(e.to_string());
+                    })
+                    .await;
+                }
+                Ok(s) => {
+                    let (mut sink, mut stream) = s.split();
+                    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<WsCommand>();
+                    let tx_for_stream = tx.clone();
+
+                    let should_open = state
+                        .lock_async(|f| {
+                            let mut f = f.unwrap();
+                            if matches!(
+                                f.ready_state,
+                                WebSocketReadyState::Closing | WebSocketReadyState::Closed
+                            ) {
+                                f.ready_state = WebSocketReadyState::Closed;
+                                false
+                            } else {
+                                f.sender = Some(tx);
+                                f.ready_state = WebSocketReadyState::Open;
+                                true
+                            }
+                        })
+                        .await;
+
+                    if !should_open {
+                        let _ = sink.close().await;
+                        exec.execute(move || {
+                            tjs_this.on_close(1005, String::new());
+                        })
+                        .await;
+                        return;
+                    }
+
+                    let tjs_open = tjs_this.clone();
+                    exec.execute(move || {
+                        tjs_open.on_open();
+                    })
+                    .await;
+
+                    let tjs_write_err = tjs_this.clone();
+                    let exec_write = exec.clone();
+                    rt_handle.spawn(async move {
+                        while let Some(cmd) = rx.recv().await {
+                            match cmd {
+                                WsCommand::Send(msg) => {
+                                    if let Err(e) = sink.send(msg).await {
+                                        let err_str = e.to_string();
+                                        let tjs_e = tjs_write_err.clone();
+                                        exec_write
+                                            .execute(move || {
+                                                tjs_e.on_error(err_str);
+                                            })
+                                            .await;
+                                        break;
+                                    }
+                                }
+                                WsCommand::Flush => {
+                                    if let Err(e) = sink.flush().await {
+                                        let err_str = e.to_string();
+                                        let tjs_e = tjs_write_err.clone();
+                                        exec_write
+                                            .execute(move || {
+                                                tjs_e.on_error(err_str);
+                                            })
+                                            .await;
+                                        break;
+                                    }
+                                }
+                                WsCommand::Close(frame) => {
+                                    let _ = sink.send(Message::Close(frame)).await;
+                                    let _ = sink.close().await;
+                                    break;
+                                }
+                            }
+                        }
+                    });
+
+                    let mut close_info: Option<(u16, String)> = None;
+                    while let Some(item) = stream.next().await {
+                        match item {
+                            Ok(Message::Text(text)) => {
+                                let msg_str = text.to_string();
+                                let tjs_msg = tjs_this.clone();
+                                exec.execute(move || {
+                                    tjs_msg.on_message(tTJSVariant::from(msg_str.as_str()));
+                                })
+                                .await;
+                            }
+                            Ok(Message::Binary(bytes)) => {
+                                let vec = bytes.to_vec();
+                                let tjs_msg = tjs_this.clone();
+                                exec.execute(move || {
+                                    let var =
+                                        tTJSVariant::from((vec.as_ptr(), vec.len() as tjs_uint));
+                                    tjs_msg.on_message(var);
+                                })
+                                .await;
+                            }
+                            Ok(Message::Close(frame)) => {
+                                close_info = Some(match frame {
+                                    Some(f) => (u16::from(f.code), f.reason.to_string()),
+                                    None => (1005, String::new()),
+                                });
+                                let _ = tx_for_stream.send(WsCommand::Close(None));
+                                break;
+                            }
+                            Ok(Message::Ping(_)) => {
+                                let _ = tx_for_stream.send(WsCommand::Flush);
+                            }
+                            Ok(Message::Pong(_)) | Ok(Message::Frame(_)) => {}
+                            Err(e) => {
+                                let err_str = e.to_string();
+                                let tjs_err = tjs_this.clone();
+                                exec.execute(move || {
+                                    tjs_err.on_error(err_str);
+                                })
+                                .await;
+                                break;
+                            }
+                        }
+                    }
+
+                    drop(tx_for_stream);
+                    state
+                        .lock_async(|f| {
+                            let mut f = f.unwrap();
+                            f.sender = None;
+                            f.ready_state = WebSocketReadyState::Closed;
+                        })
+                        .await;
+
+                    let (code, reason) = close_info.unwrap_or((1005, String::new()));
+                    exec.execute(move || {
+                        tjs_this.on_close(code, reason);
+                    })
+                    .await;
+                }
+            }
+        });
+        Ok(this)
+    }
+
+    fn get_url(&self) -> &str {
+        &self.url
+    }
+
+    #[tjs(case = camel)]
+    fn get_ready_state(&self) -> Result<tTJSVariant> {
+        Ok(ser::to(&self.state.lock().unwrap().ready_state)?)
+    }
+
+    fn send(&self, data: &mut tTJSVariant) -> Result<()> {
+        let msg = if data.is_string() {
+            let s = String::to_param(data).map_err(|e| anyhow::anyhow!("{e}"))?;
+            Message::Text(s.into())
+        } else if data.is_octet() {
+            let oct = types::Octet::to_param(data).map_err(|e| anyhow::anyhow!("{e}"))?;
+            Message::Binary(oct.to_vec().into())
+        } else {
+            anyhow::bail!("WebSocket.send only supports String or Octet");
+        };
+        let guard = self.state.lock().unwrap();
+        if !matches!(guard.ready_state, WebSocketReadyState::Open) {
+            anyhow::bail!("WebSocket is not open");
+        }
+        if let Some(sender) = &guard.sender {
+            sender
+                .send(WsCommand::Send(msg))
+                .map_err(|_| anyhow::anyhow!("WebSocket stream is closed"))?;
+        } else {
+            anyhow::bail!("WebSocket stream is not available");
+        }
+        Ok(())
+    }
+
+    fn close(&self, code: Option<i64>, reason: Option<String>) -> Result<()> {
+        let frame = match (code, reason) {
+            (None, None) => None,
+            (code_opt, reason_opt) => {
+                let code_u16 = match code_opt {
+                    Some(c) => u16::try_from(c)
+                        .map_err(|_| anyhow::anyhow!("Invalid WebSocket close code: {c}"))?,
+                    None => 1000,
+                };
+                Some(CloseFrame {
+                    code: CloseCode::from(code_u16),
+                    reason: reason_opt.unwrap_or_default().into(),
+                })
+            }
+        };
+        let mut guard = self.state.lock().unwrap();
+        match guard.ready_state {
+            WebSocketReadyState::Connecting => {
+                guard.ready_state = WebSocketReadyState::Closing;
+            }
+            WebSocketReadyState::Open => {
+                guard.ready_state = WebSocketReadyState::Closing;
+                if let Some(sender) = guard.sender.take() {
+                    let _ = sender.send(WsCommand::Close(frame));
+                }
+            }
+            WebSocketReadyState::Closing | WebSocketReadyState::Closed => {}
+        }
+        Ok(())
+    }
+}
+
 #[unsafe(export_name = "V2Link")]
 unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
@@ -412,7 +948,8 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
 
     let http_req = HttpReq::create_native_class().1;
     let abort_signal = AbortSignal::create_native_class().1;
-    register_var!(http_req, abort_signal);
+    let web_socket = WebSocket::create_native_class().1;
+    register_var!(http_req, abort_signal, web_socket);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -423,7 +960,7 @@ unsafe extern "system" fn v2_unlink() -> i32 {
         log!("[httpreq]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    unregister_var!(http_req, abort_signal);
+    unregister_var!(http_req, abort_signal, web_socket);
     unsafe {
         RUNTIME = None;
         EXECUTOR = None;

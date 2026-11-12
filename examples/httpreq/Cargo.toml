@@ -2,6 +2,7 @@
 name = "httpreq"
 version = "0.1.0"
 edition = "2024"
+description = "An asynchronous HTTP and WebSocket client plugin for Kirikiri Z"
 
 [lib]
 crate-type = ["cdylib"]
@@ -16,3 +17,12 @@ serde_json = "1"
 tokio = { version = "1.54", features = ["rt-multi-thread"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["handshake"]}
 tokio-util = "0.7"
+
+[build-dependencies]
+winresource = "0.1"
+
+[package.metadata.winresource]
+OriginalFilename = "httpreq.dll"
+LegalCopyright = "Copyright ©lifegpc 2026"
+CompanyName = "lifegpc"
+FileDescription = "An asynchronous HTTP and WebSocket client plugin for Kirikiri Z. Source code: https://github.com/lifegpc/krkrz_plugin_base/tree/master/examples/httpreq"

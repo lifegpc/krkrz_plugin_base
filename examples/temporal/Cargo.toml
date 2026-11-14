@@ -6,6 +6,13 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+default = ["locales"]
+locales = ["dep:icu", "dep:sys-locale"]
+
 [dependencies]
-krkrz_plugin_base = { path = "../../", default-features = false }
+krkrz_plugin_base = { path = "../../", default-features = false, features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
 temporal_rs = "0.2"
+icu = { version = "2.4", optional = true, features = ["compiled_data"] }
+sys-locale = { version = "0.3", optional = true }

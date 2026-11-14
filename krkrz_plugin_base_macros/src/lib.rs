@@ -482,6 +482,13 @@ impl FnTjsAttributes {
     }
 }
 
+fn skip_meta_value(meta: &syn::meta::ParseNestedMeta<'_>) -> syn::Result<()> {
+    if meta.input.peek(Eq) {
+        let _: Expr = meta.value()?.parse()?;
+    }
+    Ok(())
+}
+
 fn arg_uses_serde(attrs: &[Attribute], function_serde: bool) -> syn::Result<bool> {
     if function_serde {
         return Ok(true);
@@ -499,7 +506,7 @@ fn arg_uses_serde(attrs: &[Attribute], function_serde: bool) -> syn::Result<bool
                     serde = true;
                     Ok(())
                 } else {
-                    Ok(())
+                    skip_meta_value(&meta)
                 }
             })?;
             if serde {
@@ -519,7 +526,7 @@ fn arg_is_this(attrs: &[Attribute]) -> syn::Result<bool> {
                     is_this = true;
                     Ok(())
                 } else {
-                    Ok(())
+                    skip_meta_value(&meta)
                 }
             })?;
             if is_this {
@@ -530,50 +537,32 @@ fn arg_is_this(attrs: &[Attribute]) -> syn::Result<bool> {
     Ok(false)
 }
 
-fn validate_serde_attrs(input: &ItemImpl) -> syn::Result<()> {
-    if cfg!(feature = "serde") {
-        return Ok(());
-    }
-    for attr in &input.attrs {
+fn validate_no_serde_in_attrs(attrs: &[Attribute]) -> syn::Result<()> {
+    for attr in attrs {
         if attr.path().is_ident("tjs") {
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("serde") {
                     Err(meta.error("the `tjs(serde)` attribute requires the `serde` feature"))
                 } else {
-                    Ok(())
+                    skip_meta_value(&meta)
                 }
             })?;
         }
     }
+    Ok(())
+}
+
+fn validate_serde_attrs(input: &ItemImpl) -> syn::Result<()> {
+    if cfg!(feature = "serde") {
+        return Ok(());
+    }
+    validate_no_serde_in_attrs(&input.attrs)?;
     for item in &input.items {
         if let ImplItem::Fn(function) = item {
-            for attr in &function.attrs {
-                if attr.path().is_ident("tjs") {
-                    attr.parse_nested_meta(|meta| {
-                        if meta.path.is_ident("serde") {
-                            Err(meta
-                                .error("the `tjs(serde)` attribute requires the `serde` feature"))
-                        } else {
-                            Ok(())
-                        }
-                    })?;
-                }
-            }
+            validate_no_serde_in_attrs(&function.attrs)?;
             for arg in &function.sig.inputs {
                 if let FnArg::Typed(arg) = arg {
-                    for attr in &arg.attrs {
-                        if attr.path().is_ident("tjs") {
-                            attr.parse_nested_meta(|meta| {
-                                if meta.path.is_ident("serde") {
-                                    Err(meta.error(
-                                        "the `tjs(serde)` attribute requires the `serde` feature",
-                                    ))
-                                } else {
-                                    Ok(())
-                                }
-                            })?;
-                        }
-                    }
+                    validate_no_serde_in_attrs(&arg.attrs)?;
                 }
             }
         }
@@ -585,31 +574,10 @@ fn validate_serde_attrs_fn(input: &ItemFn) -> syn::Result<()> {
     if cfg!(feature = "serde") {
         return Ok(());
     }
-    for attr in &input.attrs {
-        if attr.path().is_ident("tjs") {
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("serde") {
-                    Err(meta.error("the `tjs(serde)` attribute requires the `serde` feature"))
-                } else {
-                    Ok(())
-                }
-            })?;
-        }
-    }
+    validate_no_serde_in_attrs(&input.attrs)?;
     for arg in &input.sig.inputs {
         if let FnArg::Typed(arg) = arg {
-            for attr in &arg.attrs {
-                if attr.path().is_ident("tjs") {
-                    attr.parse_nested_meta(|meta| {
-                        if meta.path.is_ident("serde") {
-                            Err(meta
-                                .error("the `tjs(serde)` attribute requires the `serde` feature"))
-                        } else {
-                            Ok(())
-                        }
-                    })?;
-                }
-            }
+            validate_no_serde_in_attrs(&arg.attrs)?;
         }
     }
     Ok(())

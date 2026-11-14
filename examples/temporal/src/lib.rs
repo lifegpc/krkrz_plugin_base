@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use krkrz_plugin_base::param::TypeError;
 use krkrz_plugin_base::{tp_stub::*, *};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use temporal_rs::TemporalError;
 
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
@@ -69,6 +69,7 @@ impl std::fmt::Display for Error {
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum FractionalSecondDigits {
+    #[serde(deserialize_with = "Self::deserialize_auto")]
     Auto,
     Digit(u8),
 }
@@ -85,10 +86,22 @@ impl FractionalSecondDigits {
             }
         }
     }
+
+    fn deserialize_auto<'de, D>(deserializer: D) -> Result<(), D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if s == "auto" {
+            Ok(())
+        } else {
+            Err(serde::de::Error::custom("expected \"auto\""))
+        }
+    }
 }
 
 #[derive(Deserialize)]
-#[serde(untagged, rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 enum RoundingMode {
     Ceil,
     Floor,
@@ -118,7 +131,7 @@ impl RoundingMode {
 }
 
 #[derive(Deserialize)]
-#[serde(untagged, rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 enum Unit {
     Auto,
     Nanosecond,
@@ -156,6 +169,21 @@ impl Unit {
 impl Instant {
     fn new(nanoseconds: i128) -> Result<Self, TemporalError> {
         Ok(Self(temporal_rs::Instant::try_new(nanoseconds)?))
+    }
+
+    #[tjs(static_method)]
+    fn compare(instant1: &mut tTJSVariant, instant2: &mut tTJSVariant) -> Result<i32, Error> {
+        let i1 = if Self::is_instance_of2(instant1) {
+            Self::get_ref2(instant1).get_epoch_nanoseconds()
+        } else {
+            Self::from(instant1)?.get_epoch_nanoseconds()
+        };
+        let i2 = if Self::is_instance_of2(instant2) {
+            Self::get_ref2(instant2).get_epoch_nanoseconds()
+        } else {
+            Self::from(instant2)?.get_epoch_nanoseconds()
+        };
+        Ok(std::cmp::Ord::cmp(&i1, &i2) as i8 as i32)
     }
 
     #[allow(non_upper_case_globals)]
@@ -268,6 +296,64 @@ impl Instant {
         Ok(re)
     }
 
+    fn equals(&self, other: &mut tTJSVariant) -> Result<bool, Error> {
+        let o = if Self::is_instance_of2(other) {
+            Self::get_ref2(other).get_epoch_nanoseconds()
+        } else {
+            Self::from(other)?.get_epoch_nanoseconds()
+        };
+        Ok(self.get_epoch_nanoseconds() == o)
+    }
+
+    fn round(&self, options: &mut tTJSVariant) -> Result<tTJSVariant, Error> {
+        let mut smallest_unit = Unit::Auto;
+        let mut inc = 1;
+        let mut rounding_mode = RoundingMode::HalfExpand;
+        if options.is_string() {
+            smallest_unit = de::from(options)?;
+        } else {
+            let a = options.as_object_no_add_ref();
+            if a.is_null() {
+                return Err("options is not a object.".into());
+            }
+            let c = unsafe { &mut (*a) };
+            c.with_get_serde("smallestUnit", |s| {
+                smallest_unit = s;
+            })?
+            .ok_or_else(|| Error::from("smallestUnit must specified."))?;
+            let mut t = c.get("roundingIncrement")?;
+            if let Some(t) = t.as_mut() {
+                if t.can_as_integer() {
+                    inc = t.as_integer();
+                }
+            }
+            c.with_get_serde("roundingMode", |s| {
+                rounding_mode = s;
+            })?;
+        }
+        let mut opt = temporal_rs::options::RoundingOptions::default();
+        opt.largest_unit = None;
+        opt.smallest_unit = Some(smallest_unit.to_unit());
+        opt.rounding_mode = Some(rounding_mode.to_rounding_mode());
+        opt.increment = Some(temporal_rs::options::RoundingIncrement::try_new(
+            inc as u32,
+        )?);
+        let re = Self(self.0.round(opt)?);
+        let n = Instant::create(re);
+        let re = tTJSVariant::from(n);
+        unsafe { (*n).release() };
+        Ok(re)
+    }
+
+    #[tjs(case = camel, serde)]
+    fn to_locale_string(
+        &self,
+        locales: Option<locales::Locales>,
+        options: Option<locales::ToLocaleStringOptions>,
+    ) -> Result<String, Error> {
+        locales::format_instant(&self.0, locales, options)
+    }
+
     #[tjs(case = camel)]
     fn to_string(&self, options: Option<&mut tTJSVariant>) -> Result<String, Error> {
         let mut fractional_second_digits = FractionalSecondDigits::Auto;
@@ -314,15 +400,6 @@ impl Instant {
                 smallest_unit: smallest_unit.map(|u| u.to_unit()),
             },
         )?)
-    }
-
-    #[tjs(case = camel, serde)]
-    fn to_locale_string(
-        &self,
-        locales: Option<locales::Locales>,
-        options: Option<locales::ToLocaleStringOptions>,
-    ) -> Result<String, Error> {
-        locales::format_instant(&self.0, locales, options)
     }
 }
 

@@ -14,7 +14,7 @@ use std::ffi::c_void;
 use std::fmt;
 use std::future::Future;
 use std::io;
-use std::panic::{self, AssertUnwindSafe};
+use std::panic;
 use std::pin::Pin;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
@@ -106,6 +106,11 @@ struct SharedQueue {
 }
 
 impl SharedQueue {
+    fn enqueue(&self, task: BoxedTask) {
+        self.queue.lock().unwrap().push_back(task);
+        self.notify();
+    }
+
     fn notify(&self) {
         if !self.event_posted.swap(true, Ordering::AcqRel) {
             let hwnd = self.hwnd.load(Ordering::Acquire);
@@ -398,9 +403,10 @@ impl AsyncExecutor {
     /// Executes `script` on the krkrz window thread and awaits its return value.
     ///
     /// The closure is scheduled via the window thread's event queue (`TVPPostEvent`)
-    /// and guaranteed to run on the krkrz window thread. If `script` panics, the
-    /// panic is caught before crossing the FFI boundary and resumed on the task
-    /// awaiting this method.
+    /// and guaranteed to run on the krkrz window thread. Exceptions raised by
+    /// krkrz or TJS callbacks unwind through the executor into krkrz's event
+    /// handling code. Rust panics are not caught, so closures passed here must
+    /// not panic.
     pub async fn execute<F, R>(&self, script: F) -> R
     where
         F: FnOnce() -> R + Send + 'static,
@@ -470,11 +476,11 @@ where
                     }
                 }
                 let mut unwind_guard = UnwindGuard(Some(Arc::clone(&task_state)));
-                let output = panic::catch_unwind(AssertUnwindSafe(script));
+                let output = script();
                 unwind_guard.0 = None;
                 let waker = {
                     let mut guard = task_state.lock().unwrap();
-                    guard.result = Some(output);
+                    guard.result = Some(Ok(output));
                     guard.waker.take()
                 };
                 if let Some(waker) = waker {
@@ -482,8 +488,7 @@ where
                 }
             });
 
-            this.shared.queue.lock().unwrap().push_back(task);
-            this.shared.notify();
+            this.shared.enqueue(task);
             return Poll::Pending;
         }
 
@@ -734,13 +739,6 @@ mod tests {
             assert_eq!(ran_tid, win_tid);
             assert!(on_win_thread);
             assert_eq!(sum, 42);
-
-            let panic_res = panic::catch_unwind(AssertUnwindSafe(|| {
-                block_on(exec_bg.execute(|| -> i32 {
-                    panic!("window thread panic test");
-                }))
-            }));
-            assert!(panic_res.is_err());
 
             done_bg.store(true, Ordering::Release);
         });

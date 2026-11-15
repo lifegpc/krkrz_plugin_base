@@ -8,11 +8,12 @@ crate-type = ["cdylib"]
 
 [features]
 default = ["locales"]
-locales = ["dep:icu", "dep:sys-locale"]
+locales = ["dep:icu", "dep:sys-locale", "dep:writeable"]
 
 [dependencies]
 krkrz_plugin_base = { path = "../../", default-features = false, features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 temporal_rs = "0.2"
-icu = { version = "2.4", optional = true, features = ["compiled_data"] }
+icu = { version = "2.4", optional = true, features = ["compiled_data", "unstable"] }
 sys-locale = { version = "0.3", optional = true }
+writeable = { version = "0.6", optional = true }

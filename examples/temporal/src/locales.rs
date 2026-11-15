@@ -127,6 +127,63 @@ pub struct ToLocaleStringOptions {
     pub time_zone_name: Option<TimeZoneNameStyle>,
 }
 
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum DurationFormatStyle {
+    Long,
+    Short,
+    Narrow,
+    Digital,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum DurationFieldStyle {
+    Long,
+    Short,
+    Narrow,
+    Numeric,
+    #[serde(rename = "2-digit")]
+    TwoDigit,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum DurationFieldDisplay {
+    Auto,
+    Always,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(not(feature = "locales"), allow(dead_code))]
+pub struct DurationFormatOptions {
+    pub locale_matcher: Option<LocaleMatcher>,
+    pub numbering_system: Option<String>,
+    pub style: Option<DurationFormatStyle>,
+    pub years: Option<DurationFieldStyle>,
+    pub years_display: Option<DurationFieldDisplay>,
+    pub months: Option<DurationFieldStyle>,
+    pub months_display: Option<DurationFieldDisplay>,
+    pub weeks: Option<DurationFieldStyle>,
+    pub weeks_display: Option<DurationFieldDisplay>,
+    pub days: Option<DurationFieldStyle>,
+    pub days_display: Option<DurationFieldDisplay>,
+    pub hours: Option<DurationFieldStyle>,
+    pub hours_display: Option<DurationFieldDisplay>,
+    pub minutes: Option<DurationFieldStyle>,
+    pub minutes_display: Option<DurationFieldDisplay>,
+    pub seconds: Option<DurationFieldStyle>,
+    pub seconds_display: Option<DurationFieldDisplay>,
+    pub milliseconds: Option<DurationFieldStyle>,
+    pub milliseconds_display: Option<DurationFieldDisplay>,
+    pub microseconds: Option<DurationFieldStyle>,
+    pub microseconds_display: Option<DurationFieldDisplay>,
+    pub nanoseconds: Option<DurationFieldStyle>,
+    pub nanoseconds_display: Option<DurationFieldDisplay>,
+    pub fractional_digits: Option<u8>,
+}
+
 #[cfg_attr(not(feature = "locales"), allow(dead_code))]
 impl ToLocaleStringOptions {
     fn has_style(&self) -> bool {
@@ -413,11 +470,270 @@ pub fn format_instant(
     Ok(dtf.format(&icu_zdt).to_string())
 }
 
+#[cfg(feature = "locales")]
+fn duration_display(
+    value: DurationFieldDisplay,
+) -> icu::experimental::duration::options::FieldDisplay {
+    use icu::experimental::duration::options::FieldDisplay;
+    match value {
+        DurationFieldDisplay::Auto => FieldDisplay::Auto,
+        DurationFieldDisplay::Always => FieldDisplay::Always,
+    }
+}
+
+#[cfg(feature = "locales")]
+fn calendar_duration_style(
+    value: DurationFieldStyle,
+) -> Result<icu::experimental::duration::options::YearStyle, Error> {
+    use icu::experimental::duration::options::YearStyle;
+    match value {
+        DurationFieldStyle::Long => Ok(YearStyle::Long),
+        DurationFieldStyle::Short => Ok(YearStyle::Short),
+        DurationFieldStyle::Narrow => Ok(YearStyle::Narrow),
+        _ => Err("numeric and 2-digit are not valid for years, months, weeks, or days".into()),
+    }
+}
+
+#[cfg(feature = "locales")]
+fn time_duration_style(
+    value: DurationFieldStyle,
+) -> icu::experimental::duration::options::HourStyle {
+    use icu::experimental::duration::options::HourStyle;
+    match value {
+        DurationFieldStyle::Long => HourStyle::Long,
+        DurationFieldStyle::Short => HourStyle::Short,
+        DurationFieldStyle::Narrow => HourStyle::Narrow,
+        DurationFieldStyle::Numeric => HourStyle::Numeric,
+        DurationFieldStyle::TwoDigit => HourStyle::TwoDigit,
+    }
+}
+
+#[cfg(feature = "locales")]
+fn subsecond_duration_style(
+    value: DurationFieldStyle,
+) -> Result<icu::experimental::duration::options::MilliSecondStyle, Error> {
+    use icu::experimental::duration::options::MilliSecondStyle;
+    match value {
+        DurationFieldStyle::Long => Ok(MilliSecondStyle::Long),
+        DurationFieldStyle::Short => Ok(MilliSecondStyle::Short),
+        DurationFieldStyle::Narrow => Ok(MilliSecondStyle::Narrow),
+        DurationFieldStyle::Numeric => Ok(MilliSecondStyle::Numeric),
+        DurationFieldStyle::TwoDigit => {
+            Err("2-digit is not valid for milliseconds, microseconds, or nanoseconds".into())
+        }
+    }
+}
+
+#[cfg(feature = "locales")]
+fn icu_duration(
+    duration: &temporal_rs::Duration,
+) -> Result<icu::experimental::duration::Duration, Error> {
+    use icu::experimental::duration::{Duration, DurationSign};
+
+    let magnitude = |value: i128| {
+        u64::try_from(value.unsigned_abs())
+            .map_err(|_| Error::Error("Duration field is out of range for ICU formatting".into()))
+    };
+    Ok(Duration {
+        sign: if duration.sign() == temporal_rs::Sign::Negative {
+            DurationSign::Negative
+        } else {
+            DurationSign::Positive
+        },
+        years: magnitude(i128::from(duration.years()))?,
+        months: magnitude(i128::from(duration.months()))?,
+        weeks: magnitude(i128::from(duration.weeks()))?,
+        days: magnitude(i128::from(duration.days()))?,
+        hours: magnitude(i128::from(duration.hours()))?,
+        minutes: magnitude(i128::from(duration.minutes()))?,
+        seconds: magnitude(i128::from(duration.seconds()))?,
+        milliseconds: magnitude(i128::from(duration.milliseconds()))?,
+        microseconds: magnitude(duration.microseconds())?,
+        nanoseconds: magnitude(duration.nanoseconds())?,
+    })
+}
+
+#[cfg(feature = "locales")]
+pub fn format_duration(
+    duration: &temporal_rs::Duration,
+    locales: Option<Locales>,
+    options: Option<DurationFormatOptions>,
+) -> Result<String, Error> {
+    use icu::experimental::duration::ValidatedDurationFormatterOptions;
+    use icu::experimental::duration::options::{
+        BaseStyle, DayStyle, DurationFormatterOptions, FractionalDigits, MonthStyle, WeekStyle,
+    };
+
+    let options = options.unwrap_or_default();
+    let _locale_matcher = options.locale_matcher;
+    if options.fractional_digits.is_some_and(|digits| digits > 9) {
+        return Err("fractionalDigits must be between 0 and 9".into());
+    }
+
+    let locale_options = ToLocaleStringOptions {
+        numbering_system: options.numbering_system.clone(),
+        ..Default::default()
+    };
+    let locale = resolve_locale(locales, &locale_options)?;
+    let mut formatter_options = DurationFormatterOptions::default();
+    formatter_options.base = match options.style.unwrap_or(DurationFormatStyle::Short) {
+        DurationFormatStyle::Long => BaseStyle::Long,
+        DurationFormatStyle::Short => BaseStyle::Short,
+        DurationFormatStyle::Narrow => BaseStyle::Narrow,
+        DurationFormatStyle::Digital => BaseStyle::Digital,
+    };
+    formatter_options.fractional_digits = options
+        .fractional_digits
+        .map_or(FractionalDigits::ShowAll, FractionalDigits::Fixed);
+
+    formatter_options.year = options.years.map(calendar_duration_style).transpose()?;
+    formatter_options.year_visibility = options.years_display.map(duration_display);
+    formatter_options.month = options
+        .months
+        .map(calendar_duration_style)
+        .transpose()?
+        .map(|style| match style {
+            icu::experimental::duration::options::YearStyle::Long => MonthStyle::Long,
+            icu::experimental::duration::options::YearStyle::Short => MonthStyle::Short,
+            icu::experimental::duration::options::YearStyle::Narrow => MonthStyle::Narrow,
+            _ => unreachable!(),
+        });
+    formatter_options.month_visibility = options.months_display.map(duration_display);
+    formatter_options.week = options
+        .weeks
+        .map(calendar_duration_style)
+        .transpose()?
+        .map(|style| match style {
+            icu::experimental::duration::options::YearStyle::Long => WeekStyle::Long,
+            icu::experimental::duration::options::YearStyle::Short => WeekStyle::Short,
+            icu::experimental::duration::options::YearStyle::Narrow => WeekStyle::Narrow,
+            _ => unreachable!(),
+        });
+    formatter_options.week_visibility = options.weeks_display.map(duration_display);
+    formatter_options.day = options
+        .days
+        .map(calendar_duration_style)
+        .transpose()?
+        .map(|style| match style {
+            icu::experimental::duration::options::YearStyle::Long => DayStyle::Long,
+            icu::experimental::duration::options::YearStyle::Short => DayStyle::Short,
+            icu::experimental::duration::options::YearStyle::Narrow => DayStyle::Narrow,
+            _ => unreachable!(),
+        });
+    formatter_options.day_visibility = options.days_display.map(duration_display);
+    formatter_options.hour = options.hours.map(time_duration_style);
+    formatter_options.hour_visibility = options.hours_display.map(duration_display);
+    formatter_options.minute = options
+        .minutes
+        .map(|style| match time_duration_style(style) {
+            icu::experimental::duration::options::HourStyle::Long => {
+                icu::experimental::duration::options::MinuteStyle::Long
+            }
+            icu::experimental::duration::options::HourStyle::Short => {
+                icu::experimental::duration::options::MinuteStyle::Short
+            }
+            icu::experimental::duration::options::HourStyle::Narrow => {
+                icu::experimental::duration::options::MinuteStyle::Narrow
+            }
+            icu::experimental::duration::options::HourStyle::Numeric => {
+                icu::experimental::duration::options::MinuteStyle::Numeric
+            }
+            icu::experimental::duration::options::HourStyle::TwoDigit => {
+                icu::experimental::duration::options::MinuteStyle::TwoDigit
+            }
+            _ => unreachable!(),
+        });
+    formatter_options.minute_visibility = options.minutes_display.map(duration_display);
+    formatter_options.second = options
+        .seconds
+        .map(|style| match time_duration_style(style) {
+            icu::experimental::duration::options::HourStyle::Long => {
+                icu::experimental::duration::options::SecondStyle::Long
+            }
+            icu::experimental::duration::options::HourStyle::Short => {
+                icu::experimental::duration::options::SecondStyle::Short
+            }
+            icu::experimental::duration::options::HourStyle::Narrow => {
+                icu::experimental::duration::options::SecondStyle::Narrow
+            }
+            icu::experimental::duration::options::HourStyle::Numeric => {
+                icu::experimental::duration::options::SecondStyle::Numeric
+            }
+            icu::experimental::duration::options::HourStyle::TwoDigit => {
+                icu::experimental::duration::options::SecondStyle::TwoDigit
+            }
+            _ => unreachable!(),
+        });
+    formatter_options.second_visibility = options.seconds_display.map(duration_display);
+    formatter_options.millisecond = options
+        .milliseconds
+        .map(subsecond_duration_style)
+        .transpose()?;
+    formatter_options.millisecond_visibility = options.milliseconds_display.map(duration_display);
+    formatter_options.microsecond = options
+        .microseconds
+        .map(subsecond_duration_style)
+        .transpose()?
+        .map(|style| match style {
+            icu::experimental::duration::options::MilliSecondStyle::Long => {
+                icu::experimental::duration::options::MicroSecondStyle::Long
+            }
+            icu::experimental::duration::options::MilliSecondStyle::Short => {
+                icu::experimental::duration::options::MicroSecondStyle::Short
+            }
+            icu::experimental::duration::options::MilliSecondStyle::Narrow => {
+                icu::experimental::duration::options::MicroSecondStyle::Narrow
+            }
+            icu::experimental::duration::options::MilliSecondStyle::Numeric => {
+                icu::experimental::duration::options::MicroSecondStyle::Numeric
+            }
+            _ => unreachable!(),
+        });
+    formatter_options.microsecond_visibility = options.microseconds_display.map(duration_display);
+    formatter_options.nanosecond = options
+        .nanoseconds
+        .map(subsecond_duration_style)
+        .transpose()?
+        .map(|style| match style {
+            icu::experimental::duration::options::MilliSecondStyle::Long => {
+                icu::experimental::duration::options::NanoSecondStyle::Long
+            }
+            icu::experimental::duration::options::MilliSecondStyle::Short => {
+                icu::experimental::duration::options::NanoSecondStyle::Short
+            }
+            icu::experimental::duration::options::MilliSecondStyle::Narrow => {
+                icu::experimental::duration::options::NanoSecondStyle::Narrow
+            }
+            icu::experimental::duration::options::MilliSecondStyle::Numeric => {
+                icu::experimental::duration::options::NanoSecondStyle::Numeric
+            }
+            _ => unreachable!(),
+        });
+    formatter_options.nanosecond_visibility = options.nanoseconds_display.map(duration_display);
+
+    let formatter_options = ValidatedDurationFormatterOptions::validate(formatter_options)
+        .map_err(|e| Error::Error(format!("Invalid duration format options: {e}")))?;
+    let formatter =
+        icu::experimental::duration::DurationFormatter::try_new(locale.into(), formatter_options)
+            .map_err(|e| Error::Error(format!("Failed to create DurationFormatter: {e}")))?;
+    let duration = icu_duration(duration)?;
+    Ok(writeable::Writeable::write_to_string(&formatter.format(&duration)).into_owned())
+}
+
 #[cfg(not(feature = "locales"))]
 pub fn format_instant(
     _instant: &temporal_rs::Instant,
     _locales: Option<Locales>,
     _options: Option<ToLocaleStringOptions>,
+) -> Result<String, Error> {
+    Err("locales feature is not enabled".into())
+}
+
+#[cfg(not(feature = "locales"))]
+pub fn format_duration(
+    _duration: &temporal_rs::Duration,
+    _locales: Option<Locales>,
+    _options: Option<DurationFormatOptions>,
 ) -> Result<String, Error> {
     Err("locales feature is not enabled".into())
 }

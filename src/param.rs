@@ -75,7 +75,41 @@ impl<'a> TjsParam<'a> for i128 {
     #[allow(non_upper_case_globals)]
     fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
         match param.typ() {
-            tTJSVariantType_tvtInteger | tTJSVariantType_tvtReal => Ok(param.as_integer() as i128),
+            tTJSVariantType_tvtInteger => Ok(i128::from(param.as_integer())),
+            tTJSVariantType_tvtReal => {
+                let value = param.as_real();
+                if !value.is_finite() || value < i128::MIN as f64 || value >= i128::MAX as f64 {
+                    return Err(TypeError("big integer"));
+                }
+                Ok(value as i128)
+            }
+            tTJSVariantType_tvtString => {
+                let s = param.as_string_no_add_ref();
+                if s.is_null() {
+                    return Err(TypeError("string"));
+                }
+                let ss = ttstr::from(s).to_string();
+                ss.parse().map_err(|_| TypeError("big integer"))
+            }
+            _ => Err(TypeError("big integer")),
+        }
+    }
+}
+
+impl<'a> TjsParam<'a> for u128 {
+    type Error = TypeError;
+    #[allow(non_upper_case_globals)]
+    fn to_param(param: &mut tTJSVariant) -> Result<Self, Self::Error> {
+        match param.typ() {
+            // TJS integers are stored as i64; larger positive literals arrive with the u64 bit pattern.
+            tTJSVariantType_tvtInteger => Ok(param.as_integer() as u64 as u128),
+            tTJSVariantType_tvtReal => {
+                let value = param.as_real();
+                if !value.is_finite() || value < 0.0 || value >= u128::MAX as f64 {
+                    return Err(TypeError("big integer"));
+                }
+                Ok(value as u128)
+            }
             tTJSVariantType_tvtString => {
                 let s = param.as_string_no_add_ref();
                 if s.is_null() {

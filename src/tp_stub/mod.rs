@@ -3275,6 +3275,16 @@ impl Assign<i128> for tTJSVariant {
     }
 }
 
+impl Assign<u128> for tTJSVariant {
+    fn assign(&mut self, rhs: u128) -> &mut Self {
+        if rhs > (i64::MAX as u128) {
+            self.assign(rhs.to_string().as_str())
+        } else {
+            self.assign(rhs as i64)
+        }
+    }
+}
+
 impl Assign<tTJSVariant> for tTJSVariant {
     fn assign(&mut self, rhs: tTJSVariant) -> &mut Self {
         self.assign(&rhs)

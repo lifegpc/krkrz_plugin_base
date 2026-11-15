@@ -373,6 +373,20 @@ impl<'de, 'a> Deserializer<'de> for TjsDeserializer<'a> {
             Err(TypeError("integer").into())
         }
     }
+    fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let value = i128::to_param(self.value)?;
+        visitor.visit_i128(value)
+    }
+    fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        let value = u128::to_param(self.value)?;
+        visitor.visit_u128(value)
+    }
     impl_int_deser!(deserialize_u8, u8, visit_u8);
     impl_int_deser!(deserialize_u16, u16, visit_u16);
     impl_int_deser!(deserialize_u32, u32, visit_u32);

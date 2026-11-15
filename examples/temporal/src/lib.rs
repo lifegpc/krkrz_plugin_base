@@ -532,7 +532,7 @@ impl Drop for Instant {
 
 struct Duration(temporal_rs::Duration);
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct DurationFromInfo {
     years: Option<i64>,
     months: Option<i64>,
@@ -544,6 +544,90 @@ struct DurationFromInfo {
     milliseconds: Option<i64>,
     microseconds: Option<i128>,
     nanoseconds: Option<i128>,
+}
+
+impl DurationFromInfo {
+    fn is_empty(&self) -> bool {
+        self.years.is_none()
+            && self.months.is_none()
+            && self.weeks.is_none()
+            && self.days.is_none()
+            && self.hours.is_none()
+            && self.minutes.is_none()
+            && self.seconds.is_none()
+            && self.milliseconds.is_none()
+            && self.microseconds.is_none()
+            && self.nanoseconds.is_none()
+    }
+
+    fn into_duration(
+        self,
+        defaults: Option<&temporal_rs::Duration>,
+    ) -> Result<temporal_rs::Duration, Error> {
+        Ok(temporal_rs::Duration::new(
+            self.years
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.years())),
+            self.months
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.months())),
+            self.weeks
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.weeks())),
+            self.days
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.days())),
+            self.hours
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.hours())),
+            self.minutes
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.minutes())),
+            self.seconds
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.seconds())),
+            self.milliseconds
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.milliseconds())),
+            self.microseconds
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.microseconds())),
+            self.nanoseconds
+                .unwrap_or_else(|| defaults.map_or(0, |d| d.nanoseconds())),
+        )?)
+    }
+}
+
+fn parse_duration_integer(value: &mut tTJSVariant) -> Result<i128, Error> {
+    i128::to_param(value).map_err(Error::from)
+}
+
+fn parse_relative_to(value: &mut tTJSVariant) -> Result<temporal_rs::options::RelativeTo, Error> {
+    use temporal_rs::options::RelativeTo;
+
+    if PlainDate::is_instance_of2(value) {
+        return Ok(RelativeTo::PlainDate(PlainDate::get_ref2(value).0.clone()));
+    }
+    if ZonedDateTime::is_instance_of2(value) {
+        return Ok(RelativeTo::ZonedDateTime(
+            ZonedDateTime::get_ref2(value).0.clone(),
+        ));
+    }
+    if !value.is_string() {
+        return Err(TypeError("string, PlainDate, or ZonedDateTime").into());
+    }
+
+    let text = String::to_param(value)?;
+    let provider = &*temporal_rs::provider::COMPILED_TZ_PROVIDER;
+    Ok(RelativeTo::try_from_str_with_provider(&text, provider)?)
+}
+
+fn parse_relative_to_option(
+    object: &mut iTJSDispatch2,
+) -> Result<Option<temporal_rs::options::RelativeTo>, Error> {
+    let mut relative_to = object.get("relativeTo")?;
+    match relative_to.as_mut() {
+        Some(value) if !value.is_void() => Ok(Some(parse_relative_to(value)?)),
+        _ => Ok(None),
+    }
+}
+
+fn duration_variant(value: temporal_rs::Duration) -> tTJSVariant {
+    let object = Duration::create(Duration(value));
+    let result = tTJSVariant::from(object);
+    unsafe { (*object).release() };
+    result
 }
 
 #[Tjs2Class]
@@ -590,7 +674,7 @@ impl Duration {
                 return Err("options is not a object.".into());
             }
             let c = unsafe { &mut (*a) };
-            relative_to = Self::_parse_relative_to(c)?;
+            relative_to = parse_relative_to_option(c)?;
         }
         Ok(d1.0.compare(&d2.0, relative_to)? as i8 as i32)
     }
@@ -603,19 +687,11 @@ impl Duration {
                     let inf = Duration::get_ref2(info);
                     return Ok(Self(inf.0.clone()));
                 }
-                let info = de::from::<DurationFromInfo>(info)?;
-                Ok(Self(temporal_rs::Duration::new(
-                    info.years.unwrap_or(0),
-                    info.months.unwrap_or(0),
-                    info.weeks.unwrap_or(0),
-                    info.days.unwrap_or(0),
-                    info.hours.unwrap_or(0),
-                    info.minutes.unwrap_or(0),
-                    info.seconds.unwrap_or(0),
-                    info.milliseconds.unwrap_or(0),
-                    info.microseconds.unwrap_or(0),
-                    info.nanoseconds.unwrap_or(0),
-                )?))
+                let fields = de::from::<DurationFromInfo>(info)?;
+                if fields.is_empty() {
+                    return Err(TypeError("Duration-like object with at least one field").into());
+                }
+                Ok(Self(fields.into_duration(None)?))
             }
             tTJSVariantType_tvtString => {
                 let s = String::to_param(info)?;
@@ -626,56 +702,192 @@ impl Duration {
     }
 
     fn abs(&self) -> Result<tTJSVariant, Error> {
-        let re = Self(self.0.abs());
-        let n = Duration::create(re);
-        let re = tTJSVariant::from(n);
-        unsafe { (*n).release() };
-        Ok(re)
+        Ok(duration_variant(self.0.abs()))
     }
 
     fn add(&self, other: &mut tTJSVariant) -> Result<tTJSVariant, Error> {
-        let re = Self(if Self::is_instance_of2(other) {
+        let re = if Self::is_instance_of2(other) {
             let dur = Self::get_ref2(other);
             self.0.add(&dur.0)?
         } else {
             let dur = Self::from(other)?;
             self.0.add(&dur.0)?
-        });
-        let n = Duration::create(re);
-        let re = tTJSVariant::from(n);
-        unsafe { (*n).release() };
-        Ok(re)
+        };
+        Ok(duration_variant(re))
     }
 
     fn negated(&self) -> Result<tTJSVariant, Error> {
-        let re = Self(self.0.negated());
-        let n = Duration::create(re);
-        let re = tTJSVariant::from(n);
-        unsafe { (*n).release() };
-        Ok(re)
+        Ok(duration_variant(self.0.negated()))
     }
 
-    #[tjs(skip)]
-    fn _parse_relative_to(
-        c: &mut iTJSDispatch2,
-    ) -> Result<Option<temporal_rs::options::RelativeTo>, Error> {
-        use temporal_rs::options::RelativeTo;
-        let mut opt = c.get("relativeTo")?;
-        if let Some(o) = opt.as_mut() {
-            if PlainDate::is_instance_of2(o) {
-                Ok(Some(RelativeTo::PlainDate(
-                    PlainDate::get_ref2(o).0.clone(),
-                )))
-            } else if ZonedDateTime::is_instance_of2(o) {
-                Ok(Some(RelativeTo::ZonedDateTime(
-                    ZonedDateTime::get_ref2(o).0.clone(),
-                )))
-            } else {
-                Err(TypeError("PlainDate or ZonedDateTime").into())
-            }
-        } else {
-            Ok(None)
+    fn get_years(&self) -> i64 {
+        self.0.years()
+    }
+
+    fn get_months(&self) -> i64 {
+        self.0.months()
+    }
+
+    fn get_weeks(&self) -> i64 {
+        self.0.weeks()
+    }
+
+    fn get_days(&self) -> i64 {
+        self.0.days()
+    }
+
+    fn get_hours(&self) -> i64 {
+        self.0.hours()
+    }
+
+    fn get_minutes(&self) -> i64 {
+        self.0.minutes()
+    }
+
+    fn get_seconds(&self) -> i64 {
+        self.0.seconds()
+    }
+
+    fn get_milliseconds(&self) -> i64 {
+        self.0.milliseconds()
+    }
+
+    fn get_microseconds(&self) -> i128 {
+        self.0.microseconds()
+    }
+
+    fn get_nanoseconds(&self) -> i128 {
+        self.0.nanoseconds()
+    }
+
+    fn get_sign(&self) -> i32 {
+        self.0.sign() as i8 as i32
+    }
+
+    fn get_blank(&self) -> bool {
+        self.0.is_zero()
+    }
+
+    fn with(&self, info: &mut tTJSVariant) -> Result<tTJSVariant, Error> {
+        let fields = de::from::<DurationFromInfo>(info)?;
+        if fields.is_empty() {
+            return Err(TypeError("Duration-like object with at least one field").into());
         }
+        Ok(duration_variant(fields.into_duration(Some(&self.0))?))
+    }
+
+    fn subtract(&self, other: &mut tTJSVariant) -> Result<tTJSVariant, Error> {
+        let re = if Self::is_instance_of2(other) {
+            self.0.subtract(&Self::get_ref2(other).0)?
+        } else {
+            self.0.subtract(&Self::from(other)?.0)?
+        };
+        Ok(duration_variant(re))
+    }
+
+    fn round(&self, round_to: &mut tTJSVariant) -> Result<tTJSVariant, Error> {
+        let mut largest_unit = None;
+        let mut smallest_unit = None;
+        let mut rounding_mode = None;
+        let mut increment = None;
+        let relative_to;
+
+        if round_to.is_string() {
+            smallest_unit = Some(de::from::<Unit>(round_to)?.to_unit());
+            relative_to = None;
+        } else {
+            let object = round_to.as_object_no_add_ref();
+            if object.is_null() {
+                return Err(TypeError("string or object").into());
+            }
+            let object = unsafe { &mut (*object) };
+            object.with_get_serde("largestUnit", |unit: Unit| {
+                largest_unit = Some(unit.to_unit());
+            })?;
+            relative_to = parse_relative_to_option(object)?;
+            let mut value = object.get("roundingIncrement")?;
+            if let Some(value) = value.as_mut().filter(|value| !value.is_void()) {
+                let number = parse_duration_integer(value)?;
+                let number =
+                    u32::try_from(number).map_err(|_| Error::from(TemporalError::range()))?;
+                increment = Some(temporal_rs::options::RoundingIncrement::try_new(number)?);
+            }
+            object.with_get_serde("roundingMode", |mode: RoundingMode| {
+                rounding_mode = Some(mode.to_rounding_mode());
+            })?;
+            object.with_get_serde("smallestUnit", |unit: Unit| {
+                smallest_unit = Some(unit.to_unit());
+            })?;
+        }
+
+        let mut round_options = temporal_rs::options::RoundingOptions::default();
+        round_options.largest_unit = largest_unit;
+        round_options.smallest_unit = smallest_unit;
+        round_options.rounding_mode = rounding_mode;
+        round_options.increment = increment;
+        let result = self.0.round(round_options, relative_to)?;
+        Ok(duration_variant(result))
+    }
+
+    fn total(&self, total_of: &mut tTJSVariant) -> Result<f64, Error> {
+        let (unit, relative_to) = if total_of.is_string() {
+            (de::from::<Unit>(total_of)?.to_unit(), None)
+        } else {
+            let object = total_of.as_object_no_add_ref();
+            if object.is_null() {
+                return Err(TypeError("string or object").into());
+            }
+            let object = unsafe { &mut (*object) };
+            let mut unit = None;
+            object
+                .with_get_serde("unit", |value: Unit| {
+                    unit = Some(value.to_unit());
+                })?
+                .ok_or_else(|| Error::from("unit must be specified."))?;
+            (unit.unwrap(), parse_relative_to_option(object)?)
+        };
+
+        Ok(self.0.total(unit, relative_to)?.as_inner())
+    }
+
+    #[tjs(case = camel, serde)]
+    fn to_locale_string(
+        &self,
+        locales: Option<locales::Locales>,
+        options: Option<locales::DurationFormatOptions>,
+    ) -> Result<String, Error> {
+        locales::format_duration(&self.0, locales, options)
+    }
+
+    #[tjs(case = camel)]
+    fn to_string(&self, options: Option<&mut tTJSVariant>) -> Result<String, Error> {
+        let mut precision = FractionalSecondDigits::Auto;
+        let mut rounding_mode = RoundingMode::Trunc;
+        let mut smallest_unit = None;
+        if let Some(options) = options {
+            let object = options.as_object_no_add_ref();
+            if object.is_null() {
+                return Err(TypeError("object").into());
+            }
+            let object = unsafe { &mut (*object) };
+            object.with_get_serde("fractionalSecondDigits", |value| precision = value)?;
+            object.with_get_serde("roundingMode", |value| rounding_mode = value)?;
+            object.with_get_serde("smallestUnit", |value: Unit| {
+                smallest_unit = Some(value.to_unit());
+            })?;
+        }
+        Ok(self
+            .0
+            .as_temporal_string(temporal_rs::options::ToStringRoundingOptions {
+                precision: precision.to_precision()?,
+                smallest_unit,
+                rounding_mode: Some(rounding_mode.to_rounding_mode()),
+            })?)
+    }
+
+    #[tjs(rename = "toJSON")]
+    fn to_json(&self) -> Result<String, Error> {
+        self.to_string(None)
     }
 }
 

@@ -259,6 +259,14 @@ impl<'a> Serializer for TjsSerializer<'a> {
         self.obj.assign(v);
         Ok(())
     }
+    fn serialize_i128(self, v: i128) -> Result<Self::Ok, Self::Error> {
+        self.obj.assign(v);
+        Ok(())
+    }
+    fn serialize_u128(self, v: u128) -> Result<Self::Ok, Self::Error> {
+        self.obj.assign(v);
+        Ok(())
+    }
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
         self.obj.assign(v as i64);
         Ok(())

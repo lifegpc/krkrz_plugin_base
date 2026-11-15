@@ -549,7 +549,10 @@ mod tests {
             const { std::cell::RefCell::new(Vec::new()) };
     }
 
-    unsafe extern "system-unwind" fn mock_tjs_string_from_wstr(s: *mut tTJSString, _str: *const tjs_char) {
+    unsafe extern "system-unwind" fn mock_tjs_string_from_wstr(
+        s: *mut tTJSString,
+        _str: *const tjs_char,
+    ) {
         unsafe {
             (*s)._base.Ptr = ptr::null_mut();
         }

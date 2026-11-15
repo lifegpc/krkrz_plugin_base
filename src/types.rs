@@ -143,7 +143,10 @@ impl<T: TVPStorageMedia> TVPStorageMediaWrapper<T> {
             .get_name(unsafe { &mut *name });
     }
 
-    unsafe extern "C-unwind" fn normalize_domain_name(this: *mut iTVPStorageMedia, name: *mut ttstr) {
+    unsafe extern "C-unwind" fn normalize_domain_name(
+        this: *mut iTVPStorageMedia,
+        name: *mut ttstr,
+    ) {
         unsafe { Self::from_base(this) }
             .media
             .normalize_domain_name(unsafe { &mut *name });

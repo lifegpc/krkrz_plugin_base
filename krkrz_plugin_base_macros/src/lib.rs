@@ -583,11 +583,7 @@ fn validate_serde_attrs_fn(input: &ItemFn) -> syn::Result<()> {
     Ok(())
 }
 
-fn gen_param_stream(
-    t: &syn::PatType,
-    i: usize,
-    function_serde: bool,
-) -> proc_macro2::TokenStream {
+fn gen_param_stream(t: &syn::PatType, i: usize, function_serde: bool) -> proc_macro2::TokenStream {
     use syn::Pat;
     let runtime_crate = runtime_crate();
     let is_option = is_option_type(&t.ty);
@@ -850,11 +846,7 @@ fn gen_fn_params<'a>(
             if !is_option_type(&t.ty) {
                 min_args = param_idx + 1;
             }
-            streams.push(gen_param_stream(
-                t,
-                param_idx,
-                function_serde,
-            ));
+            streams.push(gen_param_stream(t, param_idx, function_serde));
             param_idx += 1;
         }
         args.push(quote!(#name,));

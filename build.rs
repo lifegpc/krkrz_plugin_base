@@ -34,14 +34,24 @@ fn main() {
             bindgen::Abi::System,
             "(tTVPXP3ArchiveExtractionFilter|tTVPWindowMessageReceiver)",
         )
+        .override_abi(
+            bindgen::Abi::CUnwind,
+            "(tTVP[^WX].*|[^t].*|t[^T].*|tT[^V].*|tTV[^P].*)",
+        )
         .vtable_generation(true)
         .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
         .parse_callbacks(Box::new(MyCallback {}))
         .generate()
         .expect("bindgen failed");
-    bindings
-        .write_to_file(std::env::var("OUT_DIR").unwrap() + "/generated.rs")
-        .expect("write failed");
+    let generated = bindings
+        .to_string()
+        .replace("extern \"C\"", "extern \"C-unwind\"")
+        .replace("extern \"system\"", "extern \"system-unwind\"");
+    std::fs::write(
+        std::env::var("OUT_DIR").unwrap() + "/generated.rs",
+        generated,
+    )
+    .expect("write failed");
     cc::Build::new()
         .cpp(true)
         .flag_if_supported("-std=c++17")

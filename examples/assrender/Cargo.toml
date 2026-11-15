@@ -19,4 +19,3 @@ serde = { version = "1", features = ["derive"] }
 [profile.release]
 lto = true
 codegen-units = 1
-panic = "abort"

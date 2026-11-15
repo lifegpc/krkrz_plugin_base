@@ -84,6 +84,23 @@ struct SendCallbacks {
 // krkrz window thread.
 unsafe impl Send for SendCallbacks {}
 
+impl Drop for SendCallbacks {
+    fn drop(&mut self) {
+        self.callback.release();
+        if let Some(mut onerror) = self.onerror.take() {
+            onerror.release();
+        }
+        if let Some(sig_obj) = self.signal_obj.take() {
+            unsafe {
+                (*sig_obj).release();
+            }
+        }
+        unsafe {
+            TVPPluginGlobalRefCount -= 1;
+        }
+    }
+}
+
 impl SendCallbacks {
     /// Must only be called on the krkrz window thread.
     unsafe fn invoke_and_release(mut self, outcome: RequestOutcome) {
@@ -100,7 +117,7 @@ impl SendCallbacks {
                     .unwrap_or_else(|| tTJSVariant::from("Aborted"));
                 let mut args = Tjs2ArgsArray::new([reason_var]);
                 let _ = unsafe {
-                    onerror.try_func_call(
+                    onerror.func_call(
                         0,
                         ptr::null(),
                         ptr::null_mut(),
@@ -121,7 +138,7 @@ impl SendCallbacks {
                 Ok(variant) => {
                     let mut args = Tjs2ArgsArray::new([variant]);
                     let _ = unsafe {
-                        self.callback.try_func_call(
+                        self.callback.func_call(
                             0,
                             ptr::null(),
                             ptr::null_mut(),
@@ -137,7 +154,7 @@ impl SendCallbacks {
                         let errmsg = err.to_string();
                         let mut args = tjs2_get_args!(errmsg.as_str());
                         let _ = unsafe {
-                            onerror.try_func_call(
+                            onerror.func_call(
                                 0,
                                 ptr::null(),
                                 ptr::null_mut(),
@@ -150,19 +167,6 @@ impl SendCallbacks {
                     }
                 }
             }
-        }
-
-        self.callback.release();
-        if let Some(mut onerror) = self.onerror.take() {
-            onerror.release();
-        }
-        if let Some(sig_obj) = self.signal_obj.take() {
-            unsafe {
-                (*sig_obj).release();
-            }
-        }
-        unsafe {
-            TVPPluginGlobalRefCount -= 1;
         }
     }
 }
@@ -515,9 +519,8 @@ impl WebSocketTjsObj {
             return;
         }
         let v = val.as_object_closure();
-        let mut v = tTJSVariantClosure::new(v.Object, v.ObjThis);
         let _ = unsafe {
-            v.try_func_call(
+            v.func_call(
                 0,
                 ptr::null(),
                 ptr::null_mut(),
@@ -527,7 +530,6 @@ impl WebSocketTjsObj {
                 ptr::null_mut(),
             )
         };
-        v.release();
     }
 
     pub fn on_message(&self, msg: tTJSVariant) {
@@ -541,10 +543,9 @@ impl WebSocketTjsObj {
             return;
         }
         let v = val.as_object_closure();
-        let mut v = tTJSVariantClosure::new(v.Object, v.ObjThis);
         let mut args = Tjs2ArgsArray::new([msg]);
         let _ = unsafe {
-            v.try_func_call(
+            v.func_call(
                 0,
                 ptr::null(),
                 ptr::null_mut(),
@@ -554,7 +555,6 @@ impl WebSocketTjsObj {
                 ptr::null_mut(),
             )
         };
-        v.release();
     }
 
     pub fn on_close(&self, code: u16, reason: String) {
@@ -568,10 +568,9 @@ impl WebSocketTjsObj {
             return;
         }
         let v = val.as_object_closure();
-        let mut v = tTJSVariantClosure::new(v.Object, v.ObjThis);
         let mut args = tjs2_get_args!(code as i64, reason);
         let _ = unsafe {
-            v.try_func_call(
+            v.func_call(
                 0,
                 ptr::null(),
                 ptr::null_mut(),
@@ -581,7 +580,6 @@ impl WebSocketTjsObj {
                 ptr::null_mut(),
             )
         };
-        v.release();
     }
 
     pub fn on_error(&self, e: String) {
@@ -595,10 +593,9 @@ impl WebSocketTjsObj {
             return;
         }
         let v = val.as_object_closure();
-        let mut v = tTJSVariantClosure::new(v.Object, v.ObjThis);
         let mut args = tjs2_get_args!(e);
         let _ = unsafe {
-            v.try_func_call(
+            v.func_call(
                 0,
                 ptr::null(),
                 ptr::null_mut(),
@@ -608,7 +605,6 @@ impl WebSocketTjsObj {
                 ptr::null_mut(),
             )
         };
-        v.release();
     }
 }
 
@@ -929,7 +925,7 @@ impl WebSocket {
 }
 
 #[unsafe(export_name = "V2Link")]
-unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
+unsafe extern "system-unwind" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
 
     let runtime = match Builder::new_multi_thread().enable_all().build() {
@@ -955,7 +951,7 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
 }
 
 #[unsafe(export_name = "V2Unlink")]
-unsafe extern "system" fn v2_unlink() -> i32 {
+unsafe extern "system-unwind" fn v2_unlink() -> i32 {
     if unsafe { TVPPluginGlobalRefCount > GLOBAL_REF_COUNT_AT_INIT } {
         log!("[httpreq]Can not unlink plugin");
         return TJS_E_FAIL;

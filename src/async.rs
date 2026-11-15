@@ -118,16 +118,23 @@ impl SharedQueue {
     }
 
     fn drain_tasks(&self) {
+        struct DrainGuard<'a>(&'a SharedQueue);
+        impl Drop for DrainGuard<'_> {
+            fn drop(&mut self) {
+                if !self.0.queue.lock().unwrap().is_empty() {
+                    self.0.notify();
+                }
+            }
+        }
+
         self.event_posted.store(false, Ordering::Release);
+        let _guard = DrainGuard(self);
         loop {
             let task = self.queue.lock().unwrap().pop_front();
             match task {
                 Some(task) => task(),
                 None => break,
             }
-        }
-        if !self.queue.lock().unwrap().is_empty() {
-            self.notify();
         }
     }
 }
@@ -447,7 +454,24 @@ where
                 if task_state.lock().unwrap().cancelled {
                     return;
                 }
+                struct UnwindGuard<R>(Option<Arc<Mutex<TaskState<R>>>>);
+                impl<R> Drop for UnwindGuard<R> {
+                    fn drop(&mut self) {
+                        if let Some(task_state) = self.0.take() {
+                            let waker = {
+                                let mut guard = task_state.lock().unwrap();
+                                guard.result = Some(Err(Box::new("Task unwound across FFI")));
+                                guard.waker.take()
+                            };
+                            if let Some(waker) = waker {
+                                waker.wake();
+                            }
+                        }
+                    }
+                }
+                let mut unwind_guard = UnwindGuard(Some(Arc::clone(&task_state)));
                 let output = panic::catch_unwind(AssertUnwindSafe(script));
+                unwind_guard.0 = None;
                 let waker = {
                     let mut guard = task_state.lock().unwrap();
                     guard.result = Some(output);
@@ -525,19 +549,19 @@ mod tests {
             const { std::cell::RefCell::new(Vec::new()) };
     }
 
-    unsafe extern "system" fn mock_tjs_string_from_wstr(s: *mut tTJSString, _str: *const tjs_char) {
+    unsafe extern "system-unwind" fn mock_tjs_string_from_wstr(s: *mut tTJSString, _str: *const tjs_char) {
         unsafe {
             (*s)._base.Ptr = ptr::null_mut();
         }
     }
 
-    unsafe extern "system" fn mock_tjs_string_dtor(s: *mut tTJSString) {
+    unsafe extern "system-unwind" fn mock_tjs_string_dtor(s: *mut tTJSString) {
         unsafe {
             (*s)._base.Ptr = ptr::null_mut();
         }
     }
 
-    unsafe extern "system" fn mock_tvp_post_event(
+    unsafe extern "system-unwind" fn mock_tvp_post_event(
         _source: *mut iTJSDispatch2,
         target: *mut iTJSDispatch2,
         _eventname: *mut ttstr,
@@ -552,7 +576,7 @@ mod tests {
         }
     }
 
-    unsafe extern "system" fn mock_tvp_cancel_source_events(source: *mut iTJSDispatch2) {
+    unsafe extern "system-unwind" fn mock_tvp_cancel_source_events(source: *mut iTJSDispatch2) {
         MOCK_EVENT_QUEUE.with(|q| {
             let mut queue = q.borrow_mut();
             let mut i = 0;
@@ -597,7 +621,7 @@ mod tests {
         }
     }
 
-    unsafe extern "C" fn mock_query_functions(
+    unsafe extern "C-unwind" fn mock_query_functions(
         _this: *mut iTVPFunctionExporter,
         _name: *mut *const tjs_char,
         _function: *mut *mut c_void,
@@ -606,7 +630,7 @@ mod tests {
         false
     }
 
-    unsafe extern "C" fn mock_query_functions_by_narrow_string(
+    unsafe extern "C-unwind" fn mock_query_functions_by_narrow_string(
         _this: *mut iTVPFunctionExporter,
         name: *mut *const i8,
         function: *mut *mut c_void,

@@ -8,7 +8,7 @@ impl SimpleClass {
         Self {}
     }
 
-    unsafe extern "C" fn new_ni() -> *mut iTJSNativeInstance {
+    unsafe extern "C-unwind" fn new_ni() -> *mut iTJSNativeInstance {
         tTJSNativeInstance::new(Self::new())
     }
 }
@@ -34,7 +34,7 @@ impl TJSNativeInstance for SimpleClass {
     }
 }
 
-unsafe extern "C" fn ncm_finalize(
+unsafe extern "C-unwind" fn ncm_finalize(
     _result: *mut tTJSVariant,
     _numparams: tjs_int,
     _param: *mut *mut tTJSVariant,
@@ -48,7 +48,7 @@ static mut SIMPLE_CLASS_CID: tjs_int32 = -1;
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
 generate_origin_static_block!(simple_class, n_class, my_point);
 
-unsafe extern "C" fn ncm_construct(
+unsafe extern "C-unwind" fn ncm_construct(
     _result: *mut tTJSVariant,
     numparams: tjs_int,
     param: *mut *mut tTJSVariant,
@@ -67,7 +67,7 @@ unsafe extern "C" fn ncm_construct(
     unsafe { (*_this).construct(numparams, param, tjs_obj) }
 }
 
-unsafe extern "C" fn ncm_from(
+unsafe extern "C-unwind" fn ncm_from(
     result: *mut tTJSVariant,
     _numparams: tjs_int,
     _param: *mut *mut tTJSVariant,
@@ -199,7 +199,7 @@ impl Drop for MyPoint {
 }
 
 #[unsafe(export_name = "V2Link")]
-unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
+unsafe extern "system-unwind" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
     let simple_class = create_native_class();
     let n_class = NClass::create_native_class().1;
@@ -210,7 +210,7 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
 }
 
 #[unsafe(export_name = "V2Unlink")]
-unsafe extern "system" fn v2_unlink() -> i32 {
+unsafe extern "system-unwind" fn v2_unlink() -> i32 {
     if unsafe { TVPPluginGlobalRefCount > GLOBAL_REF_COUNT_AT_INIT } {
         log!("[simple-class]Can not unlink plugin");
         return TJS_E_FAIL;

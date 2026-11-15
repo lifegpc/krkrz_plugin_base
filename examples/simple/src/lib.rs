@@ -1,7 +1,7 @@
 use krkrz_plugin_base::{tp_stub::*, *};
 
 #[unsafe(export_name = "V2Link")]
-unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
+unsafe extern "system-unwind" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe { TVPInitImportStub(exporter) };
     let s = "[simple plugin]hello world".into();
     unsafe { TVPAddLog(&s) };
@@ -19,7 +19,7 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
 }
 
 #[unsafe(export_name = "V2Unlink")]
-unsafe extern "system" fn v2_unlink() -> i32 {
+unsafe extern "system-unwind" fn v2_unlink() -> i32 {
     let s = "[simple plugin]unlinked".into();
     unsafe { TVPAddLog(&s) };
     unsafe { TVPUninitImportStub() };

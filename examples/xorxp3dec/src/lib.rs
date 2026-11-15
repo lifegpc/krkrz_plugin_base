@@ -11,7 +11,7 @@ const KEY: u8 = match u8::from_str_radix(
     Err(_) => panic!("KEY cannot be parsed as u8."),
 };
 
-unsafe extern "system" fn filter(info: *mut tTVPXP3ExtractionFilterInfo) {
+unsafe extern "system-unwind" fn filter(info: *mut tTVPXP3ExtractionFilterInfo) {
     if info.is_null() {
         return;
     }
@@ -35,7 +35,7 @@ unsafe extern "system" fn filter(info: *mut tTVPXP3ExtractionFilterInfo) {
 }
 
 #[unsafe(export_name = "V2Link")]
-unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
+unsafe extern "system-unwind" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe {
         TVPInitImportStub(exporter);
         TVPSetXP3ArchiveExtractionFilter(Some(filter));
@@ -44,7 +44,7 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
 }
 
 #[unsafe(export_name = "V2Unlink")]
-unsafe extern "system" fn v2_unlink() -> i32 {
+unsafe extern "system-unwind" fn v2_unlink() -> i32 {
     unsafe {
         TVPSetXP3ArchiveExtractionFilter(None);
         TVPUninitImportStub();

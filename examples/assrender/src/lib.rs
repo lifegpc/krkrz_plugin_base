@@ -390,7 +390,7 @@ impl AssRender {
 }
 
 #[unsafe(export_name = "V2Link")]
-unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
+unsafe extern "system-unwind" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
     unsafe {
         TVPInitImportStub(exporter);
     }
@@ -404,7 +404,7 @@ unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
 }
 
 #[unsafe(export_name = "V2Unlink")]
-unsafe extern "system" fn v2_unlink() -> i32 {
+unsafe extern "system-unwind" fn v2_unlink() -> i32 {
     log!("[assrender]This plugin can not unlink safely.");
     TJS_E_FAIL
 }

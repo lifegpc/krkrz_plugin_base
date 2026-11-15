@@ -50,7 +50,7 @@ macro_rules! import_func {
 
 impl tTJSString {
     pub fn new() -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrd83a866389246d824efcc83303a04484,
@@ -76,7 +76,7 @@ impl tTJSString {
     }
 
     pub fn clear(&mut self) {
-        type Type = extern "system" fn(s: *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr168cf4c1b9ef70b98f2e0ab3695a4f3b,
@@ -88,7 +88,7 @@ impl tTJSString {
     }
 
     pub fn alloc_buffer(&mut self, len: tjs_uint) -> *mut tjs_char {
-        type Type = extern "system" fn(s: *mut tTJSString, len: tjs_uint) -> *mut tjs_char;
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, len: tjs_uint) -> *mut tjs_char;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr314573cca30a7c2aecc9166fbf5400c9,
@@ -100,7 +100,7 @@ impl tTJSString {
     }
 
     pub fn append_buffer(&mut self, len: tjs_uint) -> *mut tjs_char {
-        type Type = extern "system" fn(s: *mut tTJSString, len: tjs_uint) -> *mut tjs_char;
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, len: tjs_uint) -> *mut tjs_char;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr03da356426c038fad663c836c3e330ef,
@@ -112,7 +112,7 @@ impl tTJSString {
     }
 
     pub fn fix_len(&mut self) {
-        type Type = extern "system" fn(s: *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr31dbebdedc08d75e34a2cd564ce60586,
@@ -124,7 +124,7 @@ impl tTJSString {
     }
 
     pub fn replace(&mut self, from: &tTJSString, to: &tTJSString, forall: bool) {
-        type Type = extern "system" fn(
+        type Type = extern "system-unwind" fn(
             s: *mut tTJSString,
             from: *const tTJSString,
             to: *const tTJSString,
@@ -141,7 +141,7 @@ impl tTJSString {
     }
 
     pub fn to_lower_case(&mut self) {
-        type Type = extern "system" fn(s: *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrc01b0720b49ce4f792446d8965d2c31f,
@@ -153,7 +153,7 @@ impl tTJSString {
     }
 
     pub fn to_upper_case(&mut self) {
-        type Type = extern "system" fn(s: *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr4af47e46a11e1357cb994f405289d13e,
@@ -165,7 +165,7 @@ impl tTJSString {
     }
 
     pub fn get_hint(&mut self) -> *mut tjs_uint32 {
-        type Type = extern "system" fn(s: *mut tTJSString) -> *mut tjs_uint32;
+        type Type = extern "system-unwind" fn(s: *mut tTJSString) -> *mut tjs_uint32;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr25b6dafa19bfa5bde1a8b519da248f82,
@@ -177,7 +177,7 @@ impl tTJSString {
     }
 
     pub fn independ(&mut self) -> *mut tjs_char {
-        type Type = extern "system" fn(s: *mut tTJSString) -> *mut tjs_char;
+        type Type = extern "system-unwind" fn(s: *mut tTJSString) -> *mut tjs_char;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr72425405819c900aec719491cbd90c6d,
@@ -189,7 +189,7 @@ impl tTJSString {
     }
 
     pub fn c_str(&self) -> *const tjs_char {
-        type Type = extern "system" fn(s: *const tTJSString) -> *const tjs_char;
+        type Type = extern "system-unwind" fn(s: *const tTJSString) -> *const tjs_char;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtra79942af73f33bff6e432c9fd808e469,
@@ -201,7 +201,7 @@ impl tTJSString {
     }
 
     pub fn as_variant_string_no_add_ref(&self) -> *mut tTJSVariantString {
-        type Type = extern "system" fn(s: *const tTJSString) -> *mut tTJSVariantString;
+        type Type = extern "system-unwind" fn(s: *const tTJSString) -> *mut tTJSVariantString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrdf106470a4141ebc7eda22160859ffdc,
@@ -213,7 +213,7 @@ impl tTJSString {
     }
 
     pub fn as_integer(&self) -> tjs_int64 {
-        type Type = extern "system" fn(s: *const tTJSString) -> tjs_int64;
+        type Type = extern "system-unwind" fn(s: *const tTJSString) -> tjs_int64;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr469bc225b0ecd9561aae5a46b85ded42,
@@ -241,7 +241,7 @@ impl tTJSString {
     }
 
     pub fn get(&self, i: tjs_uint) -> tjs_char {
-        type Type = extern "system" fn(s: *const tTJSString, tjs_uint) -> tjs_char;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, tjs_uint) -> tjs_char;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr564b37278b50f4e5597dff6540868d49,
@@ -253,7 +253,7 @@ impl tTJSString {
     }
 
     pub fn as_lower_case(&self, dest: &mut tTJSString) {
-        type Type = extern "system" fn(s: *const tTJSString, *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr890b3a4831b824653e919b4a5197358d,
@@ -265,7 +265,7 @@ impl tTJSString {
     }
 
     pub fn as_upper_case(&self, dest: &mut tTJSString) {
-        type Type = extern "system" fn(s: *const tTJSString, *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr2dfa6c77c5051d160b8a06f540e0d68b,
@@ -277,7 +277,7 @@ impl tTJSString {
     }
 
     pub fn escape_c(&self, dest: &mut tTJSString) {
-        type Type = extern "system" fn(s: *const tTJSString, *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr05f88567d510fd84659ccbf493f647ed,
@@ -289,7 +289,7 @@ impl tTJSString {
     }
 
     pub fn unescape_c(&self, dest: &mut tTJSString) {
-        type Type = extern "system" fn(s: *const tTJSString, *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr7166b8f7bb9688c980e4fa172f06f30c,
@@ -309,7 +309,7 @@ impl tTJSString {
     }
 
     pub fn get_narrow_str_len(&self) -> tjs_int {
-        type Type = extern "system" fn(s: *const tTJSString) -> tjs_int;
+        type Type = extern "system-unwind" fn(s: *const tTJSString) -> tjs_int;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtra57696ca0c157cd7d3cd4e58c1df957c,
@@ -321,7 +321,7 @@ impl tTJSString {
     }
 
     pub fn to_narrow_str(&self, dest: *mut tjs_nchar, destmaxlen: tjs_int) {
-        type Type = extern "system" fn(s: *const tTJSString, *mut tjs_nchar, tjs_int);
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *mut tjs_nchar, tjs_int);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr1aea9f8a38bbb875b6d052f330da9178,
@@ -333,7 +333,7 @@ impl tTJSString {
     }
 
     pub fn is_empty(&self) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr2d3b3d6e22ee139cda9eee47dc031945,
@@ -345,7 +345,7 @@ impl tTJSString {
     }
 
     pub fn get_len(&self) -> tjs_int {
-        type Type = extern "system" fn(s: *const tTJSString) -> tjs_int;
+        type Type = extern "system-unwind" fn(s: *const tTJSString) -> tjs_int;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr8ff49e56c3c4c566561dcdd5c9ecc4db,
@@ -357,7 +357,7 @@ impl tTJSString {
     }
 
     pub fn length(&self) -> tjs_int {
-        type Type = extern "system" fn(s: *const tTJSString) -> tjs_int;
+        type Type = extern "system-unwind" fn(s: *const tTJSString) -> tjs_int;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr490b547e93e40082d0b83312467104f9,
@@ -369,7 +369,7 @@ impl tTJSString {
     }
 
     pub fn get_last_char(&self) -> tjs_char {
-        type Type = extern "system" fn(s: *const tTJSString) -> tjs_char;
+        type Type = extern "system-unwind" fn(s: *const tTJSString) -> tjs_char;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr2c1ef06748df47df52b586ac0fbc6a34,
@@ -396,7 +396,7 @@ impl ToString for tTJSString {
 
 impl From<&tTJSString> for tTJSString {
     fn from(value: &tTJSString) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, rhs: *const tTJSString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, rhs: *const tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr6cf6f332a6a14a15e8dce62301f5c840,
@@ -416,7 +416,7 @@ impl From<&tTJSString> for tTJSString {
 
 impl From<*mut tTJSVariantString> for tTJSString {
     fn from(value: *mut tTJSVariantString) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, rhs: *mut tTJSVariantString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, rhs: *mut tTJSVariantString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr566eeea3c5f009b0fc6fa123ba30f496,
@@ -442,7 +442,7 @@ impl From<&mut tTJSVariantString> for tTJSString {
 
 impl From<*const tjs_char> for tTJSString {
     fn from(value: *const tjs_char) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, str: *const tjs_char);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, str: *const tjs_char);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr88806e38e35c73b36acadd4061a4fe0b,
@@ -483,7 +483,7 @@ impl From<&String> for tTJSString {
 
 impl From<*const tjs_nchar> for tTJSString {
     fn from(value: *const tjs_nchar) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, str: *const tjs_nchar);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, str: *const tjs_nchar);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr3bb69d3886159aaecc333b6ff17287bf,
@@ -509,7 +509,7 @@ impl From<&[tjs_nchar]> for tTJSString {
 
 impl From<tTJSStringBufferLength> for tTJSString {
     fn from(value: tTJSStringBufferLength) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, len: tTJSStringBufferLength);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, len: tTJSStringBufferLength);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr3e36278551a9c8b29cb2e8017db6af0d,
@@ -529,7 +529,7 @@ impl From<tTJSStringBufferLength> for tTJSString {
 
 impl From<tjs_char> for tTJSString {
     fn from(value: tjs_char) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, rch: tjs_char);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, rch: tjs_char);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr5de99d84f3dc902cb0812fb85a7d5c88,
@@ -549,7 +549,7 @@ impl From<tjs_char> for tTJSString {
 
 impl From<&tTJSVariant> for tTJSString {
     fn from(value: &tTJSVariant) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, val: *const tTJSVariant);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, val: *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr31e85cbc73f8fbd4cea895a751480059,
@@ -569,7 +569,7 @@ impl From<&tTJSVariant> for tTJSString {
 
 impl From<(&tTJSString, c_int)> for tTJSString {
     fn from(value: (&tTJSString, c_int)) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, str: *const tTJSString, n: c_int);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, str: *const tTJSString, n: c_int);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr6ae29e405ede762f1a89a9dd526cb36e,
@@ -589,7 +589,7 @@ impl From<(&tTJSString, c_int)> for tTJSString {
 
 impl From<(*const tjs_char, c_int)> for tTJSString {
     fn from(value: (*const tjs_char, c_int)) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, str: *const tjs_char, n: c_int);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, str: *const tjs_char, n: c_int);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrc95bd66d95c153cdac41b5243e555f5f,
@@ -615,7 +615,7 @@ impl From<(&[tjs_char], c_int)> for tTJSString {
 
 impl From<tjs_int> for tTJSString {
     fn from(value: tjs_int) -> Self {
-        type Type = extern "system" fn(s: *mut tTJSString, n: tjs_int);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, n: tjs_int);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr72a67e9c52fd27dbb66eded47efeea74,
@@ -635,7 +635,7 @@ impl From<tjs_int> for tTJSString {
 
 impl Drop for tTJSString {
     fn drop(&mut self) {
-        type Type = extern "system" fn(s: *mut tTJSString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrfb13e41bda53e4e59403e3e14effccd6,
@@ -649,7 +649,7 @@ impl Drop for tTJSString {
 
 impl AddAssign<&tTJSString> for tTJSString {
     fn add_assign(&mut self, rhs: &tTJSString) {
-        type Type = extern "system" fn(s: *mut tTJSString, *const tTJSString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, *const tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrcd50da721dfb63f36c1ebb1226830428,
@@ -663,7 +663,7 @@ impl AddAssign<&tTJSString> for tTJSString {
 
 impl AddAssign<*const tTJSVariantString> for tTJSString {
     fn add_assign(&mut self, rhs: *const tTJSVariantString) {
-        type Type = extern "system" fn(s: *mut tTJSString, *const tTJSVariantString);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, *const tTJSVariantString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrfbba3dd6a087599d1277ae58f6cec18e,
@@ -683,7 +683,7 @@ impl AddAssign<&tTJSVariantString> for tTJSString {
 
 impl AddAssign<*const tjs_char> for tTJSString {
     fn add_assign(&mut self, rhs: *const tjs_char) {
-        type Type = extern "system" fn(s: *mut tTJSString, *const tjs_char);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, *const tjs_char);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr43cc5b5a61a6090af83333d115b5b868,
@@ -709,7 +709,7 @@ impl AddAssign<&str> for tTJSString {
 
 impl AddAssign<tjs_char> for tTJSString {
     fn add_assign(&mut self, rhs: tjs_char) {
-        type Type = extern "system" fn(s: *mut tTJSString, tjs_char);
+        type Type = extern "system-unwind" fn(s: *mut tTJSString, tjs_char);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr616fb5060d81eb5bab58647596582df4,
@@ -723,7 +723,7 @@ impl AddAssign<tjs_char> for tTJSString {
 
 impl PartialEq<tTJSString> for tTJSString {
     fn eq(&self, other: &tTJSString) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tTJSString) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtra6663c078b3aa79b39ee2d09f3875765,
@@ -735,7 +735,7 @@ impl PartialEq<tTJSString> for tTJSString {
     }
 
     fn ne(&self, other: &tTJSString) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tTJSString) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrefbe634ce4f13633e220cae167cf63fb,
@@ -753,7 +753,7 @@ pub trait tTJSStringCompareIC<Rhs: ?Sized> {
 
 impl tTJSStringCompareIC<tTJSString> for tTJSString {
     fn compare(&self, target: &tTJSString) -> tjs_int {
-        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> tjs_int;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tTJSString) -> tjs_int;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr57f4147bcc09e4e4442ffc9b0895727e,
@@ -767,7 +767,7 @@ impl tTJSStringCompareIC<tTJSString> for tTJSString {
 
 impl PartialEq<*const tjs_char> for tTJSString {
     fn eq(&self, other: &*const tjs_char) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tjs_char) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr1fb2d2e44cf83aebef7b26fd6b20bc2b,
@@ -779,7 +779,7 @@ impl PartialEq<*const tjs_char> for tTJSString {
     }
 
     fn ne(&self, other: &*const tjs_char) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tjs_char) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrbd6aa777bac947f5cffd891e9c724794,
@@ -793,7 +793,7 @@ impl PartialEq<*const tjs_char> for tTJSString {
 
 impl tTJSStringCompareIC<*const tjs_char> for tTJSString {
     fn compare(&self, target: &*const tjs_char) -> tjs_int {
-        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> tjs_int;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tjs_char) -> tjs_int;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr83c662330b75d616cdc8a4e11d7ababa,
@@ -849,7 +849,7 @@ impl PartialOrd<tTJSString> for tTJSString {
     }
 
     fn lt(&self, other: &tTJSString) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tTJSString) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrbbde02fe30c8a6cadb7073174ea3a874,
@@ -861,7 +861,7 @@ impl PartialOrd<tTJSString> for tTJSString {
     }
 
     fn gt(&self, other: &tTJSString) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tTJSString) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrcc1c14f63867f90bc883de03e9212cbc,
@@ -876,7 +876,7 @@ impl PartialOrd<tTJSString> for tTJSString {
 impl Add<&tTJSString> for &tTJSString {
     type Output = tTJSString;
     fn add(self, rhs: &tTJSString) -> Self::Output {
-        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> tTJSString;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tTJSString) -> tTJSString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr236e007b32bc2631b5f6dc1eda6be0a9,
@@ -898,7 +898,7 @@ impl Add<&tTJSString> for tTJSString {
 impl Add<*const tjs_char> for &tTJSString {
     type Output = tTJSString;
     fn add(self, rhs: *const tjs_char) -> Self::Output {
-        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> tTJSString;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tjs_char) -> tTJSString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrcfbb9809e0e6d954b2652856e935ced9,
@@ -949,7 +949,7 @@ impl Add<&str> for tTJSString {
 impl Add<tjs_char> for &tTJSString {
     type Output = tTJSString;
     fn add(self, rhs: tjs_char) -> Self::Output {
-        type Type = extern "system" fn(s: *const tTJSString, tjs_char) -> tTJSString;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, tjs_char) -> tTJSString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr60ee96ae4a7704340bef20fb35ba6ade,
@@ -974,7 +974,7 @@ pub trait tTJSStringStartsWith<T: ?Sized> {
 
 impl tTJSStringStartsWith<tTJSString> for tTJSString {
     fn starts_with(&self, string: &tTJSString) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString, *const tTJSString) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tTJSString) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrdd44464bd8430a5be5fef0cffcd97117,
@@ -988,7 +988,7 @@ impl tTJSStringStartsWith<tTJSString> for tTJSString {
 
 impl tTJSStringStartsWith<*const tjs_char> for tTJSString {
     fn starts_with(&self, string: &*const tjs_char) -> bool {
-        type Type = extern "system" fn(s: *const tTJSString, *const tjs_char) -> bool;
+        type Type = extern "system-unwind" fn(s: *const tTJSString, *const tjs_char) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrb9456ecba8b7898d80d2e5caa64035c9,
@@ -1019,7 +1019,7 @@ pub trait Assign<T: ?Sized> {
 
 impl Assign<&tTJSString> for tTJSString {
     fn assign(&mut self, rhs: &tTJSString) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSString, *const tTJSString) -> *mut tTJSString;
+        type Type = extern "system-unwind" fn(*mut tTJSString, *const tTJSString) -> *mut tTJSString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr18f1ad16c11429707cbf8ea4d1d4a21e,
@@ -1034,7 +1034,7 @@ impl Assign<&tTJSString> for tTJSString {
 
 impl Assign<*const tjs_char> for tTJSString {
     fn assign(&mut self, rhs: *const tjs_char) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSString, *const tjs_char) -> *mut tTJSString;
+        type Type = extern "system-unwind" fn(*mut tTJSString, *const tjs_char) -> *mut tTJSString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr18f1ad16c11429707cbf8ea4d1d4a21e,
@@ -1055,7 +1055,7 @@ impl Assign<&[tjs_char]> for tTJSString {
 
 impl Assign<*const tjs_nchar> for tTJSString {
     fn assign(&mut self, rhs: *const tjs_nchar) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSString, *const tjs_nchar) -> *mut tTJSString;
+        type Type = extern "system-unwind" fn(*mut tTJSString, *const tjs_nchar) -> *mut tTJSString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr550f317b573a1256af00586890ae82f1,
@@ -1909,27 +1909,26 @@ impl tTJSNativeInstance {
         });
         Box::into_raw(boxed) as *mut iTJSNativeInstance
     }
-    unsafe extern "C" fn construct(
+    unsafe extern "C-unwind" fn construct(
         this: *mut iTJSNativeInstance,
         numparams: tjs_int,
         param: *mut *mut tTJSVariant,
         tjs_obj: *mut iTJSDispatch2,
     ) -> tjs_error {
+        unsafe { TVPPluginGlobalRefCount += 1 };
         let self_ = unsafe { &mut *(this as *mut tTJSNativeInstance) };
         let hr = self_.ni.construct(numparams, param, tjs_obj);
-        if TJS_SUCCEEDED(hr) {
-            unsafe { TVPPluginGlobalRefCount += 1 };
-        } else {
+        if TJS_FAILED(hr) {
             // Workround fix leak when error returned from construct
-            let _boxed = unsafe { Box::from_raw(this as *mut tTJSNativeInstance) };
+            unsafe { Self::destruct(this) };
         }
         hr
     }
-    unsafe extern "C" fn invalidate(this: *mut iTJSNativeInstance) {
+    unsafe extern "C-unwind" fn invalidate(this: *mut iTJSNativeInstance) {
         let self_ = unsafe { &mut *(this as *mut tTJSNativeInstance) };
         self_.ni.invalidate();
     }
-    unsafe extern "C" fn destruct(this: *mut iTJSNativeInstance) {
+    unsafe extern "C-unwind" fn destruct(this: *mut iTJSNativeInstance) {
         let _box = unsafe { Box::from_raw(this as *mut tTJSNativeInstance) };
         unsafe { TVPPluginGlobalRefCount -= 1 };
     }
@@ -1937,7 +1936,7 @@ impl tTJSNativeInstance {
 
 impl tTJSVariant {
     pub fn new() -> Self {
-        type Type = extern "system" fn(s: *mut tTJSVariant);
+        type Type = extern "system-unwind" fn(s: *mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr3fc0c32ee41ea0c515f8fbb681e37982,
@@ -1953,7 +1952,7 @@ impl tTJSVariant {
     }
 
     pub fn change_closure_obj_this(&mut self, objthis: *mut iTJSDispatch2) {
-        type Type = extern "system" fn(*mut tTJSVariant, *mut iTJSDispatch2);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *mut iTJSDispatch2);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr3d4b725f0b4234d79524822e7c34486b,
@@ -1965,7 +1964,7 @@ impl tTJSVariant {
     }
 
     pub fn typ_mut(&mut self) -> tTJSVariantType {
-        type Type = extern "system" fn(*mut tTJSVariant) -> tTJSVariantType;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant) -> tTJSVariantType;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr8fca7d3a123df1eacf228ba89f6a02ff,
@@ -1977,7 +1976,7 @@ impl tTJSVariant {
     }
 
     pub fn clear(&mut self) {
-        type Type = extern "system" fn(s: *mut tTJSVariant);
+        type Type = extern "system-unwind" fn(s: *mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr58be195f96a36c158d638e3b0c79308b,
@@ -1989,7 +1988,7 @@ impl tTJSVariant {
     }
 
     pub fn as_object_closure(&mut self) -> &mut tTJSVariantClosure {
-        type Type = extern "system" fn(*mut tTJSVariant) -> *mut tTJSVariantClosure;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant) -> *mut tTJSVariantClosure;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtreaa4d5b1d186a807a63311ab6d5e16e4,
@@ -2001,7 +2000,7 @@ impl tTJSVariant {
     }
 
     pub fn to_object(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr246f30d208c1d3a4e2b558090f403734,
@@ -2013,7 +2012,7 @@ impl tTJSVariant {
     }
 
     pub fn to_string(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrc5a30d297c3a121879b1392bc6c604ef,
@@ -2025,7 +2024,7 @@ impl tTJSVariant {
     }
 
     pub fn get_hint(&mut self) -> *mut tjs_uint32 {
-        type Type = extern "system" fn(*mut tTJSVariant) -> *mut tjs_uint32;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant) -> *mut tjs_uint32;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtre398f5aef0ab92bc1323f3b094722fb1,
@@ -2037,7 +2036,7 @@ impl tTJSVariant {
     }
 
     pub fn to_octet(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr0733b0ac80880897d327dc6f3b04ea9e,
@@ -2049,7 +2048,7 @@ impl tTJSVariant {
     }
 
     pub fn to_integer(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr4cb055ed9d8ef71d1af10898965c940c,
@@ -2061,7 +2060,7 @@ impl tTJSVariant {
     }
 
     pub fn to_real(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtref8d198596b7d3143d02ed4450ccefa1,
@@ -2081,7 +2080,7 @@ impl tTJSVariant {
     }
 
     pub fn copy_ref(&mut self, ref_: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr679b215ff76a269871d5f325b981e561,
@@ -2093,7 +2092,7 @@ impl tTJSVariant {
     }
 
     pub fn set_object(&mut self, ref_: *mut iTJSDispatch2) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *mut iTJSDispatch2) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *mut iTJSDispatch2) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr2f873b0ee1c6591ba28bc4b9c0e4c954,
@@ -2110,7 +2109,7 @@ impl tTJSVariant {
         object: *mut iTJSDispatch2,
         objthis: *mut iTJSDispatch2,
     ) -> &mut Self {
-        type Type = extern "system" fn(
+        type Type = extern "system-unwind" fn(
             *mut tTJSVariant,
             *mut iTJSDispatch2,
             *mut iTJSDispatch2,
@@ -2127,7 +2126,7 @@ impl tTJSVariant {
     }
 
     pub fn logical_or_equal_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr6efc1d1f66f0e01a81faf767d7576816,
@@ -2139,7 +2138,7 @@ impl tTJSVariant {
     }
 
     pub fn logical_and_equal_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr4ededf58eae77c320b4a6f5f701acafb,
@@ -2151,7 +2150,7 @@ impl tTJSVariant {
     }
 
     pub fn increment(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr11912984b8c094d2df26bf3c3677d096,
@@ -2163,7 +2162,7 @@ impl tTJSVariant {
     }
 
     pub fn decrement(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr6c0df790c33142e286aea9af6993d931,
@@ -2175,7 +2174,7 @@ impl tTJSVariant {
     }
 
     pub fn rbit_shift_equal_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr786a65424247e711f6ca31f0a10603d7,
@@ -2187,7 +2186,7 @@ impl tTJSVariant {
     }
 
     pub fn idiv_equal_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr17cbcacad2ed350215d7d700c676ea40,
@@ -2199,7 +2198,7 @@ impl tTJSVariant {
     }
 
     pub fn logicalnot(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr4d2c157f8b0b49e57c3e9b5abc9deb0f,
@@ -2211,7 +2210,7 @@ impl tTJSVariant {
     }
 
     pub fn bitnot(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr4b7eaccf64af0f3a4c4fe64f4e2dd3fd,
@@ -2223,7 +2222,7 @@ impl tTJSVariant {
     }
 
     pub fn tonumber(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr3a4d2602c392a8d1f4c38d537a8c95e0,
@@ -2235,7 +2234,7 @@ impl tTJSVariant {
     }
 
     pub fn changesign(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr8d915d35ef8e857f245c5d46798618e4,
@@ -2247,7 +2246,7 @@ impl tTJSVariant {
     }
 
     pub fn typ(&self) -> tTJSVariantType {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTJSVariantType;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTJSVariantType;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr972e0f9a6ec4648a9fb82bcf5d9095ff,
@@ -2259,7 +2258,7 @@ impl tTJSVariant {
     }
 
     pub fn normal_compare(&self, val2: &tTJSVariant) -> bool {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr9d76731c37c4664d654db026644c64b4,
@@ -2271,7 +2270,7 @@ impl tTJSVariant {
     }
 
     pub fn discern_compare(&self, val2: &tTJSVariant) -> bool {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr4f1620cb699874b9c8cedf6e321c606e,
@@ -2283,7 +2282,7 @@ impl tTJSVariant {
     }
 
     pub fn discern_compare_strict_real(&self, val2: &tTJSVariant) -> bool {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtref1c6b2b601d1b0ff70272a4d447aa3c,
@@ -2295,7 +2294,7 @@ impl tTJSVariant {
     }
 
     pub fn greater_than(&self, val2: &tTJSVariant) -> bool {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr9b7872860c95cfdafb056ab30318e99c,
@@ -2307,7 +2306,7 @@ impl tTJSVariant {
     }
 
     pub fn littler_than(&self, val2: &tTJSVariant) -> bool {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr53360f194a04fc142ddae2b9a3ab4c92,
@@ -2319,7 +2318,7 @@ impl tTJSVariant {
     }
 
     pub fn is_instance_of(&self, classname: *const tjs_char) -> bool {
-        type Type = extern "system" fn(*const tTJSVariant, *const tjs_char) -> bool;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tjs_char) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrce1dcb05e5e7c4cafbc4ed37f63b256e,
@@ -2331,7 +2330,7 @@ impl tTJSVariant {
     }
 
     pub fn as_object(&self) -> *mut iTJSDispatch2 {
-        type Type = extern "system" fn(s: *const tTJSVariant) -> *mut iTJSDispatch2;
+        type Type = extern "system-unwind" fn(s: *const tTJSVariant) -> *mut iTJSDispatch2;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr841ce4492b37321eea0c1b500de9b352,
@@ -2343,7 +2342,7 @@ impl tTJSVariant {
     }
 
     pub fn as_object_no_add_ref(&self) -> *mut iTJSDispatch2 {
-        type Type = extern "system" fn(*const tTJSVariant) -> *mut iTJSDispatch2;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *mut iTJSDispatch2;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr61785de870894968cd9d95e17e88eafc,
@@ -2355,7 +2354,7 @@ impl tTJSVariant {
     }
 
     pub fn as_object_this(&self) -> *mut iTJSDispatch2 {
-        type Type = extern "system" fn(*const tTJSVariant) -> *mut iTJSDispatch2;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *mut iTJSDispatch2;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrad3236e727398311c3b8e1ddd5f4b293,
@@ -2367,7 +2366,7 @@ impl tTJSVariant {
     }
 
     pub fn as_object_this_no_add_ref(&self) -> *mut iTJSDispatch2 {
-        type Type = extern "system" fn(*const tTJSVariant) -> *mut iTJSDispatch2;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *mut iTJSDispatch2;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr80e0b7be488545ff9b8bc52c9ab5fba5,
@@ -2379,7 +2378,7 @@ impl tTJSVariant {
     }
 
     pub fn as_object_closure_no_add_ref(&self) -> &tTJSVariantClosure {
-        type Type = extern "system" fn(*const tTJSVariant) -> *const tTJSVariantClosure;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *const tTJSVariantClosure;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr4eaa3e4efb319707db6ef81db1c6f147,
@@ -2391,7 +2390,7 @@ impl tTJSVariant {
     }
 
     pub fn as_string(&self) -> *mut tTJSVariantString {
-        type Type = extern "system" fn(*const tTJSVariant) -> *mut tTJSVariantString;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *mut tTJSVariantString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr693a0152f098caee7fc77f545dd3e954,
@@ -2403,7 +2402,7 @@ impl tTJSVariant {
     }
 
     pub fn as_string_no_add_ref(&self) -> *mut tTJSVariantString {
-        type Type = extern "system" fn(*const tTJSVariant) -> *mut tTJSVariantString;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *mut tTJSVariantString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr42840710f5fba9bb32b95290b1796a55,
@@ -2415,7 +2414,7 @@ impl tTJSVariant {
     }
 
     pub fn get_string(&self) -> *const tjs_char {
-        type Type = extern "system" fn(*const tTJSVariant) -> *const tjs_char;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *const tjs_char;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtradec3f9ef429aa9a284081f0fc6a1b5b,
@@ -2427,7 +2426,7 @@ impl tTJSVariant {
     }
 
     pub fn as_octet(&self) -> *mut tTJSVariantOctet {
-        type Type = extern "system" fn(*const tTJSVariant) -> *mut tTJSVariantOctet;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *mut tTJSVariantOctet;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr674a7948152a1d7a49050b9d98796403,
@@ -2439,7 +2438,7 @@ impl tTJSVariant {
     }
 
     pub fn as_octet_no_add_ref(&self) -> *mut tTJSVariantOctet {
-        type Type = extern "system" fn(*const tTJSVariant) -> *mut tTJSVariantOctet;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> *mut tTJSVariantOctet;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtraa6f132b2031c83062f6149c90f2df5f,
@@ -2451,7 +2450,7 @@ impl tTJSVariant {
     }
 
     pub fn as_integer(&self) -> tTVInteger {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTVInteger;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTVInteger;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrb52f446e22bb92d495f7e65ac71c9bf9,
@@ -2463,7 +2462,7 @@ impl tTJSVariant {
     }
 
     pub fn as_number(&self, targ: &mut tTJSVariant) {
-        type Type = extern "system" fn(*const tTJSVariant, *mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrd4899fd4a8beb06f192dcb1d300e3319,
@@ -2475,7 +2474,7 @@ impl tTJSVariant {
     }
 
     pub fn as_real(&self) -> tTVReal {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTVReal;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTVReal;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtra5f80951cfb882ac6a3e06c0b9a95807,
@@ -2487,7 +2486,7 @@ impl tTJSVariant {
     }
 
     pub fn logical_or(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrfb6573df5887c2020ae58136f8342ed4,
@@ -2499,7 +2498,7 @@ impl tTJSVariant {
     }
 
     pub fn logical_and(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr86c67d2197c46824ab10f59e568ad13a,
@@ -2511,7 +2510,7 @@ impl tTJSVariant {
     }
 
     pub fn equal(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr5d91cff3b2a26ff7c0543e0f6d737117,
@@ -2523,7 +2522,7 @@ impl tTJSVariant {
     }
 
     pub fn not_equal(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr9996100acc7705cb2b0c904d6bad4401,
@@ -2535,7 +2534,7 @@ impl tTJSVariant {
     }
 
     pub fn less(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtref1dedc2cb58dc4e1afc14238b6fc518,
@@ -2547,7 +2546,7 @@ impl tTJSVariant {
     }
 
     pub fn greater(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrf18397fe81c043ba2346e31b359f6a73,
@@ -2559,7 +2558,7 @@ impl tTJSVariant {
     }
 
     pub fn less_equal(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr2ee45ad60b0c06a8d0feebc3a6aad9e7,
@@ -2571,7 +2570,7 @@ impl tTJSVariant {
     }
 
     pub fn greater_equal(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr44500491c57e17032951fe6ed268ff1d,
@@ -2583,7 +2582,7 @@ impl tTJSVariant {
     }
 
     pub fn rbit_shift(&self, count: tjs_int) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, tjs_int) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, tjs_int) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr04233bc4f7d4df92c260d23110320afe,
@@ -2595,7 +2594,7 @@ impl tTJSVariant {
     }
 
     pub fn idiv(&self, rhs: &tTJSVariant) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr02164e6fb4c925843ac774ec1e4c6e5d,
@@ -2607,7 +2606,7 @@ impl tTJSVariant {
     }
 
     pub fn unary_plus(&self) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrba7ff7b0b4192bd2cc7f49c7b688ad57,
@@ -2619,7 +2618,7 @@ impl tTJSVariant {
     }
 
     pub fn bit_not(&self) -> tTJSVariant {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr9d0edd8f51f155767301017bd3d256da,
@@ -2729,7 +2728,7 @@ impl tTJSVariant {
 
 impl From<&tTJSVariant> for tTJSVariant {
     fn from(value: &tTJSVariant) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, ref_: *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, ref_: *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtre8dbd4fe012262d9da831e0735aa33b3,
@@ -2747,7 +2746,7 @@ impl From<&tTJSVariant> for tTJSVariant {
 
 impl From<*mut iTJSDispatch2> for tTJSVariant {
     fn from(value: *mut iTJSDispatch2) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, ref_: *mut iTJSDispatch2);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, ref_: *mut iTJSDispatch2);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrace6cce1353865d7376caca1f2124216,
@@ -2765,7 +2764,7 @@ impl From<*mut iTJSDispatch2> for tTJSVariant {
 
 impl From<(*mut iTJSDispatch2, *mut iTJSDispatch2)> for tTJSVariant {
     fn from(value: (*mut iTJSDispatch2, *mut iTJSDispatch2)) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *mut iTJSDispatch2, *mut iTJSDispatch2);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *mut iTJSDispatch2, *mut iTJSDispatch2);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr5055344aa8055bc238b79e5f88fc3300,
@@ -2783,7 +2782,7 @@ impl From<(*mut iTJSDispatch2, *mut iTJSDispatch2)> for tTJSVariant {
 
 impl From<*const tjs_char> for tTJSVariant {
     fn from(value: *const tjs_char) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_char);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tjs_char);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr8238c542b814acf1a83c00cced57ba26,
@@ -2801,7 +2800,7 @@ impl From<*const tjs_char> for tTJSVariant {
 
 impl From<&tTJSString> for tTJSVariant {
     fn from(value: &tTJSString) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSString);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrbd2a14ca8c345fd7f151b08d1792fb60,
@@ -2819,7 +2818,7 @@ impl From<&tTJSString> for tTJSVariant {
 
 impl From<*const tjs_nchar> for tTJSVariant {
     fn from(value: *const tjs_nchar) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_nchar);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tjs_nchar);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr16d432f9f86738a7688cbfc9b12441ec,
@@ -2837,7 +2836,7 @@ impl From<*const tjs_nchar> for tTJSVariant {
 
 impl From<(*const tjs_uint8, tjs_uint)> for tTJSVariant {
     fn from(value: (*const tjs_uint8, tjs_uint)) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_uint8, tjs_uint);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tjs_uint8, tjs_uint);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr6dac00582b8ba529e548ef058c4e869e,
@@ -2855,7 +2854,7 @@ impl From<(*const tjs_uint8, tjs_uint)> for tTJSVariant {
 
 impl From<bool> for tTJSVariant {
     fn from(value: bool) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, bool);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, bool);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr9193ae470b5efdfe617b5e94cd8f5da6,
@@ -2873,7 +2872,7 @@ impl From<bool> for tTJSVariant {
 
 impl From<tjs_int32> for tTJSVariant {
     fn from(value: tjs_int32) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, tjs_int32);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, tjs_int32);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrec455b6ef0f5da178063db3875973260,
@@ -2891,7 +2890,7 @@ impl From<tjs_int32> for tTJSVariant {
 
 impl From<tjs_int64> for tTJSVariant {
     fn from(value: tjs_int64) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, tjs_int64);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, tjs_int64);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtra56aaf685bd171b63b0ef3c894d80ecf,
@@ -2909,7 +2908,7 @@ impl From<tjs_int64> for tTJSVariant {
 
 impl From<tjs_real> for tTJSVariant {
     fn from(value: tjs_real) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, tjs_real);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, tjs_real);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr9a5fe199cebb9841f94ac0bb7a4a3b6a,
@@ -2927,7 +2926,7 @@ impl From<tjs_real> for tTJSVariant {
 
 impl From<*const *const tjs_uint8> for tTJSVariant {
     fn from(value: *const *const tjs_uint8) -> Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const *const tjs_uint8);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const *const tjs_uint8);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr2acb76a1f86e34afc5fe934d406c6c4c,
@@ -2951,7 +2950,7 @@ impl Default for tTJSVariant {
 
 impl Drop for tTJSVariant {
     fn drop(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr3a4d914ca7d24989c236ad223c002d49,
@@ -2965,7 +2964,7 @@ impl Drop for tTJSVariant {
 
 impl Into<*mut iTJSDispatch2> for &mut tTJSVariant {
     fn into(self) -> *mut iTJSDispatch2 {
-        type Type = extern "system" fn(*mut tTJSVariant) -> *mut iTJSDispatch2;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant) -> *mut iTJSDispatch2;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr3206ef9b7a8013d6572decdea49e7e2e,
@@ -2979,7 +2978,7 @@ impl Into<*mut iTJSDispatch2> for &mut tTJSVariant {
 
 impl Into<tTVInteger> for &tTJSVariant {
     fn into(self) -> tTVInteger {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTVInteger;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTVInteger;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrd3f5ec78464d29ee6988a1f90c2e3e1b,
@@ -2993,7 +2992,7 @@ impl Into<tTVInteger> for &tTJSVariant {
 
 impl Into<bool> for &tTJSVariant {
     fn into(self) -> bool {
-        type Type = extern "system" fn(*const tTJSVariant) -> bool;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> bool;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtra463ad6a757c3f04e09a72e288737d06,
@@ -3007,7 +3006,7 @@ impl Into<bool> for &tTJSVariant {
 
 impl Into<tjs_int> for &tTJSVariant {
     fn into(self) -> tjs_int {
-        type Type = extern "system" fn(*const tTJSVariant) -> tjs_int;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tjs_int;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr27857bb89d35113183b682c3917d6c7a,
@@ -3021,7 +3020,7 @@ impl Into<tjs_int> for &tTJSVariant {
 
 impl Into<tTVReal> for &tTJSVariant {
     fn into(self) -> tTVReal {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTVReal;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTVReal;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr35aadb63079c8bd84ebc0389bae306e0,
@@ -3035,7 +3034,7 @@ impl Into<tTVReal> for &tTJSVariant {
 
 impl Assign<&tTJSVariant> for tTJSVariant {
     fn assign(&mut self, rhs: &tTJSVariant) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrd48ea419e040ffe8c20c1e86d80c9a5f,
@@ -3050,7 +3049,7 @@ impl Assign<&tTJSVariant> for tTJSVariant {
 
 impl Assign<*mut iTJSDispatch2> for tTJSVariant {
     fn assign(&mut self, rhs: *mut iTJSDispatch2) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *mut iTJSDispatch2) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *mut iTJSDispatch2) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr1039eff4a4443f9238438485a35a93a7,
@@ -3065,7 +3064,7 @@ impl Assign<*mut iTJSDispatch2> for tTJSVariant {
 
 impl Assign<tTJSVariantClosure> for tTJSVariant {
     fn assign(&mut self, rhs: tTJSVariantClosure) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, tTJSVariantClosure) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, tTJSVariantClosure) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtre09ed277802c1b117e1908421448886d,
@@ -3081,7 +3080,7 @@ impl Assign<tTJSVariantClosure> for tTJSVariant {
 impl Assign<*mut tTJSVariantString> for tTJSVariant {
     fn assign(&mut self, rhs: *mut tTJSVariantString) -> &mut Self {
         type Type =
-            extern "system" fn(*mut tTJSVariant, *mut tTJSVariantString) -> *mut tTJSVariant;
+            extern "system-unwind" fn(*mut tTJSVariant, *mut tTJSVariantString) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtre76dfb9e00f4a9d491117d815f30db7f,
@@ -3096,7 +3095,7 @@ impl Assign<*mut tTJSVariantString> for tTJSVariant {
 
 impl Assign<*mut tTJSVariantOctet> for tTJSVariant {
     fn assign(&mut self, rhs: *mut tTJSVariantOctet) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *mut tTJSVariantOctet) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *mut tTJSVariantOctet) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrb000dd8934508d8ec6d6ef976a6ff49b,
@@ -3111,7 +3110,7 @@ impl Assign<*mut tTJSVariantOctet> for tTJSVariant {
 
 impl Assign<&tTJSString> for tTJSVariant {
     fn assign(&mut self, rhs: &tTJSString) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSString) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSString) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrd98ab5c968ebfde4e924901d09190774,
@@ -3126,7 +3125,7 @@ impl Assign<&tTJSString> for tTJSVariant {
 
 impl Assign<*const tjs_char> for tTJSVariant {
     fn assign(&mut self, rhs: *const tjs_char) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_char) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tjs_char) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr661e8c10d5d477e6823a840244937cd8,
@@ -3147,7 +3146,7 @@ impl Assign<&[tjs_char]> for tTJSVariant {
 
 impl Assign<*const tjs_nchar> for tTJSVariant {
     fn assign(&mut self, rhs: *const tjs_nchar) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tjs_nchar) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tjs_nchar) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr6b39e70ea89c4f883689f51289029b69,
@@ -3188,7 +3187,7 @@ impl Assign<&str> for tTJSVariant {
 
 impl Assign<bool> for tTJSVariant {
     fn assign(&mut self, rhs: bool) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, bool) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, bool) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr4a18b1c0afe37b84e2b35a7fc07c4e0f,
@@ -3203,7 +3202,7 @@ impl Assign<bool> for tTJSVariant {
 
 impl Assign<tjs_int32> for tTJSVariant {
     fn assign(&mut self, rhs: tjs_int32) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, tjs_int32) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, tjs_int32) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr48b85c8774d91ca40b2992f0e452f19e,
@@ -3218,7 +3217,7 @@ impl Assign<tjs_int32> for tTJSVariant {
 
 impl Assign<tTVInteger> for tTJSVariant {
     fn assign(&mut self, rhs: tTVInteger) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, tTVInteger) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, tTVInteger) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr5ea8db9a9193fe6bab53baf2bee06b6b,
@@ -3233,7 +3232,7 @@ impl Assign<tTVInteger> for tTJSVariant {
 
 impl Assign<tjs_real> for tTJSVariant {
     fn assign(&mut self, rhs: tjs_real) -> &mut Self {
-        type Type = extern "system" fn(*mut tTJSVariant, tjs_real) -> *mut tTJSVariant;
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, tjs_real) -> *mut tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr46b92626ff6894e993c4f193a129540b,
@@ -3297,7 +3296,7 @@ impl From<&str> for tTJSVariant {
 
 impl BitOrAssign<&tTJSVariant> for tTJSVariant {
     fn bitor_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr028d5fda2f4568f6ab14b49d89650a4d,
@@ -3311,7 +3310,7 @@ impl BitOrAssign<&tTJSVariant> for tTJSVariant {
 
 impl BitXorAssign<&tTJSVariant> for tTJSVariant {
     fn bitxor_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrc27d85b695cd6e144210785bdfd446ce,
@@ -3325,7 +3324,7 @@ impl BitXorAssign<&tTJSVariant> for tTJSVariant {
 
 impl BitAndAssign<&tTJSVariant> for tTJSVariant {
     fn bitand_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr8422ef7f42009be0ad58a09d64149051,
@@ -3339,7 +3338,7 @@ impl BitAndAssign<&tTJSVariant> for tTJSVariant {
 
 impl ShrAssign<&tTJSVariant> for tTJSVariant {
     fn shr_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtree07e6522577952453206ede39cdf54c,
@@ -3353,7 +3352,7 @@ impl ShrAssign<&tTJSVariant> for tTJSVariant {
 
 impl ShlAssign<&tTJSVariant> for tTJSVariant {
     fn shl_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr995a222f2038dd2007f2c1f6429bd19e,
@@ -3367,7 +3366,7 @@ impl ShlAssign<&tTJSVariant> for tTJSVariant {
 
 impl RemAssign<&tTJSVariant> for tTJSVariant {
     fn rem_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrda8c6e750d6a9c0557a56ef7f7fd8e88,
@@ -3381,7 +3380,7 @@ impl RemAssign<&tTJSVariant> for tTJSVariant {
 
 impl DivAssign<&tTJSVariant> for tTJSVariant {
     fn div_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr9cf7b0f119bcf3fa4564837ae25429b3,
@@ -3395,7 +3394,7 @@ impl DivAssign<&tTJSVariant> for tTJSVariant {
 
 impl MulAssign<&tTJSVariant> for tTJSVariant {
     fn mul_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr2bd375c0598e9148d88579a51b2f07a8,
@@ -3409,7 +3408,7 @@ impl MulAssign<&tTJSVariant> for tTJSVariant {
 
 impl SubAssign<&tTJSVariant> for tTJSVariant {
     fn sub_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr1e463482afa8ca30f5fa7bea4fa5741d,
@@ -3423,7 +3422,7 @@ impl SubAssign<&tTJSVariant> for tTJSVariant {
 
 impl AddAssign<&tTJSVariant> for tTJSVariant {
     fn add_assign(&mut self, rhs: &tTJSVariant) {
-        type Type = extern "system" fn(*mut tTJSVariant, *const tTJSVariant);
+        type Type = extern "system-unwind" fn(*mut tTJSVariant, *const tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrfdf270e4080c986abd1649fa9fffdeab,
@@ -3438,7 +3437,7 @@ impl AddAssign<&tTJSVariant> for tTJSVariant {
 impl BitOr<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn bitor(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr263a0c5b335b2c4d5bc1f55b51b8315e,
@@ -3453,7 +3452,7 @@ impl BitOr<&tTJSVariant> for &tTJSVariant {
 impl BitXor<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn bitxor(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr975c1099e57ab67122ddef0f44fd7dd5,
@@ -3468,7 +3467,7 @@ impl BitXor<&tTJSVariant> for &tTJSVariant {
 impl BitAnd<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn bitand(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr04493e5237a7ca97afd391cb7e831ba0,
@@ -3483,7 +3482,7 @@ impl BitAnd<&tTJSVariant> for &tTJSVariant {
 impl Shr<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn shr(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr056f5d278c75750df792bf8b081fbf7d,
@@ -3498,7 +3497,7 @@ impl Shr<&tTJSVariant> for &tTJSVariant {
 impl Shl<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn shl(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrcdc475c4419e77c22508e337428c4074,
@@ -3513,7 +3512,7 @@ impl Shl<&tTJSVariant> for &tTJSVariant {
 impl Rem<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn rem(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr06bacb2910308a47bbe27ff7efa1226d,
@@ -3528,7 +3527,7 @@ impl Rem<&tTJSVariant> for &tTJSVariant {
 impl Div<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn div(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr521e053199a4aeb4e0f24d9f4a6cc682,
@@ -3543,7 +3542,7 @@ impl Div<&tTJSVariant> for &tTJSVariant {
 impl Mul<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn mul(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr5110cbbcddbd9688281ee5418e3f9023,
@@ -3558,7 +3557,7 @@ impl Mul<&tTJSVariant> for &tTJSVariant {
 impl Sub<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn sub(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr8f744c5aa8df5471939b960bc759f12b,
@@ -3573,7 +3572,7 @@ impl Sub<&tTJSVariant> for &tTJSVariant {
 impl Add<&tTJSVariant> for &tTJSVariant {
     type Output = tTJSVariant;
     fn add(self, rhs: &tTJSVariant) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant, *const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr114a781ed71edace31abb352a2671f41,
@@ -3589,7 +3588,7 @@ impl Not for &tTJSVariant {
     type Output = tTJSVariant;
     /// This is map to logical not. If you want to bit not. Call [`bit_not`](tTJSVariant::bit_not) instead.
     fn not(self) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr1db54b61f00bf931452218c4a39e79ef,
@@ -3604,7 +3603,7 @@ impl Not for &tTJSVariant {
 impl Neg for &tTJSVariant {
     type Output = tTJSVariant;
     fn neg(self) -> Self::Output {
-        type Type = extern "system" fn(*const tTJSVariant) -> tTJSVariant;
+        type Type = extern "system-unwind" fn(*const tTJSVariant) -> tTJSVariant;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr7773ac921bb82c85de3be69ef86265fd,
@@ -3624,7 +3623,7 @@ impl Clone for tTJSVariant {
 
 impl tTJSVariantString {
     pub fn add_ref(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariantString);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr8dc9cef84191f79b38403a2070952fd4,
@@ -3636,7 +3635,7 @@ impl tTJSVariantString {
     }
 
     pub fn release(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariantString);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr1d42bd1e659b36886c20567497b7ee96,
@@ -3648,7 +3647,7 @@ impl tTJSVariantString {
     }
 
     pub fn set_string(&mut self, ref_: *const tjs_char, maxlen: tjs_int) {
-        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_char, tjs_int);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString, *const tjs_char, tjs_int);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr0848fbdc7eeddb12c80bcd9c31383a64,
@@ -3660,7 +3659,7 @@ impl tTJSVariantString {
     }
 
     pub fn set_string_n(&mut self, ref_: *const tjs_nchar) {
-        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_nchar);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString, *const tjs_nchar);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr1f1123c906c28ab6d16b6bef3f7ae978,
@@ -3672,7 +3671,7 @@ impl tTJSVariantString {
     }
 
     pub fn alloc_buffer(&mut self, len: tjs_uint) {
-        type Type = extern "system" fn(*mut tTJSVariantString, tjs_uint);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString, tjs_uint);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrb84394e20cc73a90349cf5be4e783111,
@@ -3684,7 +3683,7 @@ impl tTJSVariantString {
     }
 
     pub fn reset_string(&mut self, ref_: *const tjs_char) {
-        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_char);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString, *const tjs_char);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr76e0db3797851fe8ff90cf84780c50ad,
@@ -3696,7 +3695,7 @@ impl tTJSVariantString {
     }
 
     pub fn append_buffer(&mut self, applen: tjs_uint) {
-        type Type = extern "system" fn(*mut tTJSVariantString, tjs_uint);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString, tjs_uint);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr6616241156c22bced42cd9f2f647677e,
@@ -3708,7 +3707,7 @@ impl tTJSVariantString {
     }
 
     pub fn append(&mut self, str_: *const tjs_char) {
-        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_char);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString, *const tjs_char);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr1ace346a3dd546c66ad115a33d8cf693,
@@ -3720,7 +3719,7 @@ impl tTJSVariantString {
     }
 
     pub fn append_len(&mut self, str_: *const tjs_char, applen: tjs_int) {
-        type Type = extern "system" fn(*mut tTJSVariantString, *const tjs_char, tjs_int);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString, *const tjs_char, tjs_int);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr96fb9bbe33531d4268573355c658e165,
@@ -3732,7 +3731,7 @@ impl tTJSVariantString {
     }
 
     pub fn fix_length(&mut self) -> *mut tTJSVariantString {
-        type Type = extern "system" fn(*mut tTJSVariantString) -> *mut tTJSVariantString;
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString) -> *mut tTJSVariantString;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrc90b5737134c76f9ed0bb5da7cfaad8c,
@@ -3744,7 +3743,7 @@ impl tTJSVariantString {
     }
 
     pub fn get_hint(&mut self) -> *mut tjs_uint32 {
-        type Type = extern "system" fn(*mut tTJSVariantString) -> *mut tjs_uint32;
+        type Type = extern "system-unwind" fn(*mut tTJSVariantString) -> *mut tjs_uint32;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr070ed05259a265cabdd82bfedabdd638,
@@ -3756,7 +3755,7 @@ impl tTJSVariantString {
     }
 
     pub fn get_length(&self) -> tjs_int {
-        type Type = extern "system" fn(*const tTJSVariantString) -> tjs_int;
+        type Type = extern "system-unwind" fn(*const tTJSVariantString) -> tjs_int;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrb64741dc4544ed43c44ddb6d0eb838ea,
@@ -3768,7 +3767,7 @@ impl tTJSVariantString {
     }
 
     pub fn to_integer(&self) -> tTVInteger {
-        type Type = extern "system" fn(*const tTJSVariantString) -> tTVInteger;
+        type Type = extern "system-unwind" fn(*const tTJSVariantString) -> tTVInteger;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr5b83e28b2d9ab0f75d7c7f6f61b5ded6,
@@ -3780,7 +3779,7 @@ impl tTJSVariantString {
     }
 
     pub fn to_real(&self) -> tTVReal {
-        type Type = extern "system" fn(*const tTJSVariantString) -> tTVReal;
+        type Type = extern "system-unwind" fn(*const tTJSVariantString) -> tTVReal;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrb948c9f43837efa489b0b91f3f675710,
@@ -3792,7 +3791,7 @@ impl tTJSVariantString {
     }
 
     pub fn to_number(&self, dest: &mut tTJSVariant) {
-        type Type = extern "system" fn(*const tTJSVariantString, *mut tTJSVariant);
+        type Type = extern "system-unwind" fn(*const tTJSVariantString, *mut tTJSVariant);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr9bb70418d5f8f3207f1e555deb68165e,
@@ -3804,7 +3803,7 @@ impl tTJSVariantString {
     }
 
     pub fn get_ref_count(&self) -> tjs_int {
-        type Type = extern "system" fn(*const tTJSVariantString) -> tjs_int;
+        type Type = extern "system-unwind" fn(*const tTJSVariantString) -> tjs_int;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrc66ab4868b743de9c0ba8b26c67b23da,
@@ -3818,7 +3817,7 @@ impl tTJSVariantString {
 
 impl Into<*const tjs_char> for &tTJSVariantString {
     fn into(self) -> *const tjs_char {
-        type Type = extern "system" fn(*const tTJSVariantString) -> *const tjs_char;
+        type Type = extern "system-unwind" fn(*const tTJSVariantString) -> *const tjs_char;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr008b7e3a4c5bb23ee991f684a5064737,
@@ -3832,7 +3831,7 @@ impl Into<*const tjs_char> for &tTJSVariantString {
 
 impl tTJSVariantOctet {
     pub fn add_ref(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariantOctet);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantOctet);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtrdbc9bc2e27068c8426b1c6a7f89424e0,
@@ -3844,7 +3843,7 @@ impl tTJSVariantOctet {
     }
 
     pub fn release(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariantOctet);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantOctet);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr5eeb98ca016123f57966457533bb639e,
@@ -3856,7 +3855,7 @@ impl tTJSVariantOctet {
     }
 
     pub fn get_length(&self) -> tjs_uint {
-        type Type = extern "system" fn(*const tTJSVariantOctet) -> tjs_uint;
+        type Type = extern "system-unwind" fn(*const tTJSVariantOctet) -> tjs_uint;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr98fdc846d0b4a83412f3521f65bb98b4,
@@ -3868,7 +3867,7 @@ impl tTJSVariantOctet {
     }
 
     pub fn get_data(&self) -> *const tjs_uint8 {
-        type Type = extern "system" fn(*const tTJSVariantOctet) -> *const tjs_uint8;
+        type Type = extern "system-unwind" fn(*const tTJSVariantOctet) -> *const tjs_uint8;
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr3309591d3c7f6f688e81588f169dba21,
@@ -3888,7 +3887,7 @@ impl Default for tTJSVariantOctet {
 
 impl Drop for tTJSVariantOctet {
     fn drop(&mut self) {
-        type Type = extern "system" fn(*mut tTJSVariantOctet);
+        type Type = extern "system-unwind" fn(*mut tTJSVariantOctet);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr08aef69683bcfe2a5c63d4c7866de8e9,
@@ -3903,7 +3902,7 @@ impl Drop for tTJSVariantOctet {
 impl From<(*const tjs_uint8, tjs_uint)> for tTJSVariantOctet {
     fn from(value: (*const tjs_uint8, tjs_uint)) -> Self {
         type Type =
-            extern "system" fn(*mut tTJSVariantOctet, data: *const tjs_uint8, length: tjs_uint);
+            extern "system-unwind" fn(*mut tTJSVariantOctet, data: *const tjs_uint8, length: tjs_uint);
         let ptr = unsafe {
             import_func!(
                 TVPImportFuncPtr8970ba46068ac74746c3e84299937d8f,
@@ -3933,7 +3932,7 @@ impl<const N: usize> From<&[u8; N]> for tTJSVariantOctet {
 
 impl From<((*const tjs_uint8, tjs_uint), (*const tjs_uint8, tjs_uint))> for tTJSVariantOctet {
     fn from(value: ((*const tjs_uint8, tjs_uint), (*const tjs_uint8, tjs_uint))) -> Self {
-        type Type = extern "system" fn(
+        type Type = extern "system-unwind" fn(
             *mut tTJSVariantOctet,
             *const tjs_uint8,
             tjs_uint,
@@ -3966,7 +3965,7 @@ impl From<(&[tjs_uint8], &[tjs_uint8])> for tTJSVariantOctet {
 
 impl From<(*const tTJSVariantOctet, *const tTJSVariantOctet)> for tTJSVariantOctet {
     fn from(value: (*const tTJSVariantOctet, *const tTJSVariantOctet)) -> Self {
-        type Type = extern "system" fn(
+        type Type = extern "system-unwind" fn(
             *mut tTJSVariantOctet,
             *const tTJSVariantOctet,
             *const tTJSVariantOctet,
@@ -4428,7 +4427,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_func_call(
@@ -4453,7 +4452,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_func_call_by_num(
@@ -4476,7 +4475,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_prop_get(
@@ -4497,7 +4496,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_prop_get_by_num(flag, num, result, self.select_objthis(objthis))
@@ -4513,7 +4512,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_prop_set(flag, membername, hint, param, self.select_objthis(objthis))
@@ -4528,7 +4527,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_prop_set_by_num(flag, num, param, self.select_objthis(objthis))
@@ -4543,7 +4542,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_get_count(result, membername, hint, self.select_objthis(objthis))
@@ -4557,7 +4556,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe { (*self.Object).try_get_count_by_num(result, num, self.select_objthis(objthis)) }
     }
@@ -4570,7 +4569,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_prop_set_by_vs(flag, membername, param, self.select_objthis(objthis))
@@ -4584,7 +4583,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe { (*self.Object).try_enum_members(flag, callback, self.select_objthis(objthis)) }
     }
@@ -4597,7 +4596,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_delete_member(flag, membername, hint, self.select_objthis(objthis))
@@ -4611,7 +4610,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe { (*self.Object).try_delete_member_by_num(flag, num, self.select_objthis(objthis)) }
     }
@@ -4624,7 +4623,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_invalidate(flag, membername, hint, self.select_objthis(objthis))
@@ -4638,7 +4637,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe { (*self.Object).try_invalidate_by_num(flag, num, self.select_objthis(objthis)) }
     }
@@ -4651,7 +4650,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe { (*self.Object).try_is_valid(flag, membername, hint, self.select_objthis(objthis)) }
     }
@@ -4663,7 +4662,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe { (*self.Object).try_is_valid_by_num(flag, num, self.select_objthis(objthis)) }
     }
@@ -4679,7 +4678,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_create_new(
@@ -4704,7 +4703,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_create_new_by_num(
@@ -4727,7 +4726,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_is_instance_of(
@@ -4748,7 +4747,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_is_instance_of_by_num(
@@ -4770,7 +4769,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_operation(
@@ -4793,7 +4792,7 @@ impl tTJSVariantClosure {
         objthis: *mut iTJSDispatch2,
     ) -> tjs_error {
         if self.Object.is_null() {
-            return TJS_E_FAIL;
+            super::throw_null_access();
         }
         unsafe {
             (*self.Object).try_operation_by_num(
@@ -5207,7 +5206,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         unsafe { &mut *(this as *mut Self) }
     }
 
-    unsafe extern "C" fn add_ref(this: *mut iTJSDispatch2) -> tjs_uint {
+    unsafe extern "C-unwind" fn add_ref(this: *mut iTJSDispatch2) -> tjs_uint {
         let self_ = unsafe { Self::from_base(this) };
         unsafe {
             TVPPluginGlobalRefCount += 1;
@@ -5215,7 +5214,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         self_.ref_ += 1;
         self_.ref_
     }
-    unsafe extern "C" fn release(this: *mut iTJSDispatch2) -> tjs_uint {
+    unsafe extern "C-unwind" fn release(this: *mut iTJSDispatch2) -> tjs_uint {
         unsafe {
             TVPPluginGlobalRefCount -= 1;
         }
@@ -5230,7 +5229,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         self_.ref_ -= 1;
         self_.ref_
     }
-    unsafe extern "C" fn func_call(
+    unsafe extern "C-unwind" fn func_call(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5245,7 +5244,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
             .ni
             .func_call(flag, membername, hint, result, numparams, param, objthis)
     }
-    unsafe extern "C" fn func_call_by_num(
+    unsafe extern "C-unwind" fn func_call_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5259,7 +5258,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
             .ni
             .func_call_by_num(flag, num, result, numparams, param, objthis)
     }
-    unsafe extern "C" fn prop_get(
+    unsafe extern "C-unwind" fn prop_get(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5270,7 +5269,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.prop_get(flag, membername, hint, result, objthis)
     }
-    unsafe extern "C" fn prop_get_by_num(
+    unsafe extern "C-unwind" fn prop_get_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5280,7 +5279,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.prop_get_by_num(flag, num, result, objthis)
     }
-    unsafe extern "C" fn prop_set(
+    unsafe extern "C-unwind" fn prop_set(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5291,7 +5290,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.prop_set(flag, membername, hint, param, objthis)
     }
-    unsafe extern "C" fn prop_set_by_num(
+    unsafe extern "C-unwind" fn prop_set_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5301,7 +5300,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.prop_set_by_num(flag, num, param, objthis)
     }
-    unsafe extern "C" fn get_count(
+    unsafe extern "C-unwind" fn get_count(
         this: *mut iTJSDispatch2,
         result: *mut tjs_int,
         membername: *const tjs_char,
@@ -5311,7 +5310,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.get_count(result, membername, hint, objthis)
     }
-    unsafe extern "C" fn get_count_by_num(
+    unsafe extern "C-unwind" fn get_count_by_num(
         this: *mut iTJSDispatch2,
         result: *mut tjs_int,
         num: tjs_int,
@@ -5320,7 +5319,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.get_count_by_num(result, num, objthis)
     }
-    unsafe extern "C" fn prop_set_by_vs(
+    unsafe extern "C-unwind" fn prop_set_by_vs(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *mut tTJSVariantString,
@@ -5330,7 +5329,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.prop_set_by_vs(flag, membername, param, objthis)
     }
-    unsafe extern "C" fn enum_members(
+    unsafe extern "C-unwind" fn enum_members(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         callback: *mut tTJSVariantClosure,
@@ -5339,7 +5338,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.enum_members(flag, callback, objthis)
     }
-    unsafe extern "C" fn delete_member(
+    unsafe extern "C-unwind" fn delete_member(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5349,7 +5348,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.delete_member(flag, membername, hint, objthis)
     }
-    unsafe extern "C" fn delete_member_by_num(
+    unsafe extern "C-unwind" fn delete_member_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5358,7 +5357,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.delete_member_by_num(flag, num, objthis)
     }
-    unsafe extern "C" fn invalidate(
+    unsafe extern "C-unwind" fn invalidate(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5368,7 +5367,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.invalidate(flag, membername, hint, objthis)
     }
-    unsafe extern "C" fn invalidate_by_num(
+    unsafe extern "C-unwind" fn invalidate_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5377,7 +5376,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.invalidate_by_num(flag, num, objthis)
     }
-    unsafe extern "C" fn is_valid(
+    unsafe extern "C-unwind" fn is_valid(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5387,7 +5386,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.is_valid(flag, membername, hint, objthis)
     }
-    unsafe extern "C" fn is_valid_by_num(
+    unsafe extern "C-unwind" fn is_valid_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5396,7 +5395,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.is_valid_by_num(flag, num, objthis)
     }
-    unsafe extern "C" fn create_new(
+    unsafe extern "C-unwind" fn create_new(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5411,7 +5410,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
             .ni
             .create_new(flag, membername, hint, result, numparams, param, objthis)
     }
-    unsafe extern "C" fn create_new_by_num(
+    unsafe extern "C-unwind" fn create_new_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5425,10 +5424,10 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
             .ni
             .create_new_by_num(flag, num, result, numparams, param, objthis)
     }
-    unsafe extern "C" fn reserved1(_this: *mut iTJSDispatch2) -> tjs_error {
+    unsafe extern "C-unwind" fn reserved1(_this: *mut iTJSDispatch2) -> tjs_error {
         TJS_E_NOTIMPL
     }
-    unsafe extern "C" fn is_instance_of(
+    unsafe extern "C-unwind" fn is_instance_of(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5441,7 +5440,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
             .ni
             .is_instance_of(flag, membername, hint, classname, objthis)
     }
-    unsafe extern "C" fn is_instance_of_by_num(
+    unsafe extern "C-unwind" fn is_instance_of_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5453,7 +5452,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
             .ni
             .is_instance_of_by_num(flag, num, classname, objthis)
     }
-    unsafe extern "C" fn operation(
+    unsafe extern "C-unwind" fn operation(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         membername: *const tjs_char,
@@ -5467,7 +5466,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
             .ni
             .operation(flag, membername, hint, result, param, objthis)
     }
-    unsafe extern "C" fn operation_by_num(
+    unsafe extern "C-unwind" fn operation_by_num(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_int,
@@ -5478,7 +5477,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.operation_by_num(flag, num, result, param, objthis)
     }
-    unsafe extern "C" fn native_instance_support(
+    unsafe extern "C-unwind" fn native_instance_support(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         classid: tjs_int32,
@@ -5487,7 +5486,7 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.native_instance_support(flag, classid, pointer)
     }
-    unsafe extern "C" fn class_instance_info(
+    unsafe extern "C-unwind" fn class_instance_info(
         this: *mut iTJSDispatch2,
         flag: tjs_uint32,
         num: tjs_uint,
@@ -5496,10 +5495,10 @@ impl<T: TJSDispatch> tTJSDispatch<T> {
         let self_ = unsafe { Self::from_base(this) };
         self_.ni.class_instance_info(flag, num, value)
     }
-    unsafe extern "C" fn reserved2(_this: *mut iTJSDispatch2) -> tjs_error {
+    unsafe extern "C-unwind" fn reserved2(_this: *mut iTJSDispatch2) -> tjs_error {
         TJS_E_NOTIMPL
     }
-    unsafe extern "C" fn reserved3(_this: *mut iTJSDispatch2) -> tjs_error {
+    unsafe extern "C-unwind" fn reserved3(_this: *mut iTJSDispatch2) -> tjs_error {
         TJS_E_NOTIMPL
     }
 }

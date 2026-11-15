@@ -264,7 +264,7 @@ pub fn generate_origin_static_block(input: TokenStream) -> TokenStream {
 /// static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
 /// generate_origin_static_block!(func_a, class_a);
 /// #[unsafe(export_name = "V2Link")]
-/// unsafe extern "system" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
+/// unsafe extern "system-unwind" fn v2_link(exporter: *mut iTVPFunctionExporter) -> i32 {
 ///     unsafe { TVPInitImportStub(exporter) };
 ///     let func_a = create_func_a();
 ///     let class_a = create_class_a();
@@ -587,7 +587,6 @@ fn gen_param_stream(
     t: &syn::PatType,
     i: usize,
     function_serde: bool,
-    failure: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     use syn::Pat;
     let runtime_crate = runtime_crate();
@@ -602,8 +601,7 @@ fn gen_param_stream(
             match #runtime_crate::de::from(p) {
                 Ok(t) => t,
                 Err(e) => {
-                    log!("Failed to deserialize param: {}", e);
-                    return #failure;
+                    throw_exception_message!("Failed to deserialize param: {}", e);
                 }
             }
         }
@@ -612,8 +610,7 @@ fn gen_param_stream(
             match TjsParam::to_param(p) {
                 Ok(t) => t,
                 Err(e) => {
-                    log!("Failed to convert param to specify type: {}", e);
-                    return #failure;
+                    throw_exception_message!("Failed to convert param to specify type: {}", e);
                 }
             }
         }
@@ -829,7 +826,6 @@ fn is_result_type(ty: &syn::Type) -> bool {
 fn gen_fn_params<'a>(
     typed_args: impl Iterator<Item = &'a syn::PatType>,
     function_serde: bool,
-    failure: proc_macro2::TokenStream,
 ) -> (
     usize,
     Vec<proc_macro2::TokenStream>,
@@ -858,7 +854,6 @@ fn gen_fn_params<'a>(
                 t,
                 param_idx,
                 function_serde,
-                failure.clone(),
             ));
             param_idx += 1;
         }
@@ -875,8 +870,7 @@ fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStr
         FnArg::Receiver(_) => panic!("constructor can not have a self argument."),
         FnArg::Typed(t) => t,
     });
-    let (min_args, streams, args) =
-        gen_fn_params(typed_args, function_serde, quote!(Err(TJS_E_INVALIDPARAM)));
+    let (min_args, streams, args) = gen_fn_params(typed_args, function_serde);
     let name = f.sig.ident.clone();
     let output_type = match &f.sig.output {
         ReturnType::Default => panic!("constructor mut return something."),
@@ -887,8 +881,7 @@ fn gen_constructor(f: &ImplItemFn, self_ty: &syn::Type) -> proc_macro2::TokenStr
             let re = match re {
                 Ok(re) => re,
                 Err(e) => {
-                    log!("Failed to construct object: {}", e);
-                    return Err(TJS_E_FAIL);
+                    throw_exception_message!("Failed to construct object: {}", e);
                 }
             };
         )
@@ -1112,8 +1105,8 @@ fn find_methods<'a>(items: &'a [ImplItem], self_ty: &syn::Type) -> Vec<&'a ImplI
 ///   instead of reading a TJS call argument.
 ///
 /// Parameters use [`krkrz_plugin_base::TjsParam`] conversion unless `serde` is enabled. A
-/// `Result<T, E>` returned from a constructor, method, property getter, or static method is
-/// unwrapped; an error is logged and reported to TJS as `TJS_E_FAIL`.
+/// `Result<T, E>` returned from a constructor, method, property getter/setter, or static method is
+/// unwrapped; an error is thrown to TJS via [`krkrz_plugin_base::throw_exception_message`].
 ///
 /// An instance method named `invalidate` is called when the TJS native instance is invalidated.
 /// It is not exported as a TJS member. The instance remains valid only until TJS calls its
@@ -1225,7 +1218,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             let ident = Ident::new(&format!("ncm_{}", s.sig.ident.to_string()), s.sig.ident.span());
             let fnn = LitStr::new(&bident.to_string(), bident.span());
             quote! {
-                unsafe extern "C" fn #ident(
+                unsafe extern "C-unwind" fn #ident(
                     result: *mut tTJSVariant,
                     numparams: tjs_int,
                     param: *mut *mut tTJSVariant,
@@ -1346,8 +1339,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     let re = match re {
                         Ok(re) => re,
                         Err(e) => {
-                            log!("Failed to call method from object: {}", e);
-                            return TJS_E_FAIL;
+                            throw_exception_message!("Failed to call method from object: {}", e);
                         }
                     };
                 )
@@ -1364,10 +1356,9 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 FnArg::Receiver(_) => panic!("params can not have a self argument."),
                 FnArg::Typed(t) => t,
             });
-            let (min_args, streams, args) =
-                gen_fn_params(typed_args, function_serde, quote!(TJS_E_INVALIDPARAM));
+            let (min_args, streams, args) = gen_fn_params(typed_args, function_serde);
             quote! {
-                unsafe extern "C" fn #ident(
+                unsafe extern "C-unwind" fn #ident(
                     result: *mut tTJSVariant,
                     numparams: tjs_int,
                     param: *mut *mut tTJSVariant,
@@ -1398,8 +1389,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                             s.#oident(#(#args)*)
                         }
                         None => {
-                            log!("Data is invalidated.");
-                            return TJS_E_FAIL;
+                            throw_exception_message!("Data is invalidated.");
                         }
                     };
                     #result
@@ -1465,8 +1455,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         let re = match re {
                             Ok(re) => re,
                             Err(e) => {
-                                log!("Failed to call static method: {}", e);
-                                return TJS_E_FAIL;
+                                throw_exception_message!("Failed to call static method: {}", e);
                             }
                         };
                     )
@@ -1478,10 +1467,9 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     FnArg::Typed(t) => t,
                     FnArg::Receiver(_) => panic!("static_method can not have a self argument."),
                 });
-                let (min_args, streams, args) =
-                    gen_fn_params(typed_args, function_serde, quote!(TJS_E_INVALIDPARAM));
+                let (min_args, streams, args) = gen_fn_params(typed_args, function_serde);
                 Some(quote! {
-                    unsafe extern "C" fn #ident(
+                    unsafe extern "C-unwind" fn #ident(
                         result: *mut tTJSVariant,
                         numparams: tjs_int,
                         param: *mut *mut tTJSVariant,
@@ -1537,8 +1525,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 let re = match re {
                     Ok(re) => re,
                     Err(e) => {
-                        log!("Failed to get prop from object: {}", e);
-                        return TJS_E_FAIL;
+                        throw_exception_message!("Failed to get prop from object: {}", e);
                     }
                 };
             )
@@ -1556,7 +1543,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             })
             .collect();
         let getter_stream = quote! {
-            unsafe extern "C" fn #ident(
+            unsafe extern "C-unwind" fn #ident(
                 result: *mut tTJSVariant,
                 tjs_obj: *mut iTJSDispatch2,
             ) -> tjs_error {
@@ -1578,8 +1565,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         s.#oident(#(#getter_args)*)
                     }
                     None => {
-                        log!("Data is invalidated.");
-                        return TJS_E_FAIL;
+                        throw_exception_message!("Data is invalidated.");
                     }
                 };
                 #result
@@ -1631,8 +1617,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                             s.#soident(#(#setter_args)*)
                         }
                         None => {
-                            log!("Data is invalidated.");
-                            return TJS_E_FAIL;
+                            throw_exception_message!("Data is invalidated.");
                         }
                     };
                 };
@@ -1640,8 +1625,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     match re {
                         Ok(_) => {},
                         Err(e) => {
-                            log!("Failed to set prop on object: {}", e);
-                            return TJS_E_FAIL;
+                            throw_exception_message!("Failed to set prop on object: {}", e);
                         }
                     };
                 };
@@ -1653,15 +1637,14 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                             s.#soident(#(#setter_args)*);
                         }
                         None => {
-                            log!("Data is invalidated.");
-                            return TJS_E_FAIL;
+                            throw_exception_message!("Data is invalidated.");
                         }
                     };
                 };
                 (invoke, quote!())
             };
             let setter_stream = quote! {
-                unsafe extern "C" fn #set_ident(
+                unsafe extern "C-unwind" fn #set_ident(
                     param: *const tTJSVariant,
                     tjs_obj: *mut iTJSDispatch2,
                 ) -> tjs_error {
@@ -1685,8 +1668,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     let #value_name = match TjsParam::to_param(p) {
                         Ok(t) => t,
                         Err(e) => {
-                            log!("Failed to convert param: {}", e);
-                            return TJS_E_INVALIDPARAM;
+                            throw_exception_message!("Failed to convert param: {}", e);
                         }
                     };
                     #setter_invoke
@@ -1700,7 +1682,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
             let prop_name = name_str.strip_prefix("get_").unwrap_or(&name_str);
             let set_ident = Ident::new(&format!("ncm_set_{}", prop_name), s.sig.ident.span());
             let stream = quote! {
-                unsafe extern "C" fn #set_ident(
+                unsafe extern "C-unwind" fn #set_ident(
                     param: *const tTJSVariant,
                     tjs_obj: *mut iTJSDispatch2,
                 ) -> tjs_error {
@@ -1745,7 +1727,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                 inner: Option<Box<#self_ty>>,
             }
             impl NativeInstatce {
-                unsafe extern "C" fn new() -> *mut #runtime_crate::tp_stub::iTJSNativeInstance {
+                unsafe extern "C-unwind" fn new() -> *mut #runtime_crate::tp_stub::iTJSNativeInstance {
                     use #runtime_crate::{tp_stub::*, *};
                     static VTABLE: iTJSNativeInstance__bindgen_vtable = iTJSNativeInstance__bindgen_vtable {
                         iTJSNativeInstance_Construct: NativeInstatce::construct,
@@ -1766,13 +1748,14 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     use #runtime_crate::{tp_stub::*, *};
                     #main_constructor
                 }
-                unsafe extern "C" fn construct(
+                unsafe extern "C-unwind" fn construct(
                     this: *mut #runtime_crate::tp_stub::iTJSNativeInstance,
                     numparams: #runtime_crate::tp_stub::tjs_int,
                     param: *mut *mut #runtime_crate::tp_stub::tTJSVariant,
                     tjs_obj: *mut #runtime_crate::tp_stub::iTJSDispatch2,
                 ) -> #runtime_crate::tp_stub::tjs_error {
                     use #runtime_crate::{tp_stub::*, *};
+                    unsafe { TVPPluginGlobalRefCount += 1 };
                     let self_ = unsafe { &mut *(this as *mut NativeInstatce) };
                     let hr = match Self::constructor(numparams, param, tjs_obj) {
                         Ok(data) => {
@@ -1783,22 +1766,20 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                             err
                         }
                     };
-                    if TJS_SUCCEEDED(hr) {
-                        unsafe { TVPPluginGlobalRefCount += 1 };
-                    } else {
+                    if TJS_FAILED(hr) {
                         // Workround fix leak when error returned from construct
-                        let _boxed = unsafe { Box::from_raw(this as *mut NativeInstatce) };
+                        unsafe { Self::destruct(this) };
                     }
                     hr
                 }
-                unsafe extern "C" fn invalidate(this: *mut #runtime_crate::tp_stub::iTJSNativeInstance) {
+                unsafe extern "C-unwind" fn invalidate(this: *mut #runtime_crate::tp_stub::iTJSNativeInstance) {
                     let self_ = unsafe { &mut *(this as *mut NativeInstatce) };
                     if let Some(s) = self_.inner.as_mut() {
                         #invalidate
                     }
                     self_.inner.take();
                 }
-                unsafe extern "C" fn destruct(this: *mut #runtime_crate::tp_stub::iTJSNativeInstance) {
+                unsafe extern "C-unwind" fn destruct(this: *mut #runtime_crate::tp_stub::iTJSNativeInstance) {
                     use #runtime_crate::tp_stub::*;
                     let _box = unsafe { Box::from_raw(this as *mut NativeInstatce) };
                     unsafe { TVPPluginGlobalRefCount -= 1 };
@@ -1815,7 +1796,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                     let classid = unsafe { TJSRegisterNativeClass(name) };
                     unsafe { #classid_name = classid };
                     unsafe { TJSNativeClassSetClassID(classobj, classid); }
-                    unsafe extern "C" fn ncm_construct(
+                    unsafe extern "C-unwind" fn ncm_construct(
                         _result: *mut tTJSVariant,
                         numparams: tjs_int,
                         param: *mut *mut tTJSVariant,
@@ -1832,7 +1813,7 @@ pub fn Tjs2Class(_attrs: TokenStream, input: TokenStream) -> TokenStream {
                         }
                         unsafe { (*_this).construct(numparams, param, tjs_obj) }
                     }
-                    unsafe extern "C" fn ncm_finalize(
+                    unsafe extern "C-unwind" fn ncm_finalize(
                         _result: *mut tTJSVariant,
                         _numparams: tjs_int,
                         _param: *mut *mut tTJSVariant,
@@ -2026,9 +2007,7 @@ pub fn tjs2_function(attrs: TokenStream, input: TokenStream) -> TokenStream {
         .iter()
         .enumerate()
         .map(|(i, arg)| match arg {
-            FnArg::Typed(arg) => {
-                gen_param_stream(arg, i, function_serde, quote!(TJS_E_INVALIDPARAM))
-            }
+            FnArg::Typed(arg) => gen_param_stream(arg, i, function_serde),
             FnArg::Receiver(_) => unreachable!("function receivers were rejected above"),
         })
         .collect();
@@ -2054,8 +2033,7 @@ pub fn tjs2_function(attrs: TokenStream, input: TokenStream) -> TokenStream {
             let re = match re {
                 Ok(re) => re,
                 Err(e) => {
-                    log!("Failed to call function: {}", e);
-                    return TJS_E_FAIL;
+                    throw_exception_message!("Failed to call function: {}", e);
                 }
             };
         },

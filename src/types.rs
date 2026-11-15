@@ -117,7 +117,7 @@ impl<T: TVPStorageMedia> TVPStorageMediaWrapper<T> {
         unsafe { &mut *(this as *mut Self) }
     }
 
-    unsafe extern "C" fn add_ref(this: *mut iTVPStorageMedia) {
+    unsafe extern "C-unwind" fn add_ref(this: *mut iTVPStorageMedia) {
         let self_ = unsafe { Self::from_base(this) };
         self_.ref_ += 1;
         unsafe {
@@ -125,7 +125,7 @@ impl<T: TVPStorageMedia> TVPStorageMediaWrapper<T> {
         }
     }
 
-    unsafe extern "C" fn release(this: *mut iTVPStorageMedia) {
+    unsafe extern "C-unwind" fn release(this: *mut iTVPStorageMedia) {
         unsafe {
             TVPPluginGlobalRefCount -= 1;
         }
@@ -137,25 +137,25 @@ impl<T: TVPStorageMedia> TVPStorageMediaWrapper<T> {
         }
     }
 
-    unsafe extern "C" fn get_name(this: *mut iTVPStorageMedia, name: *mut ttstr) {
+    unsafe extern "C-unwind" fn get_name(this: *mut iTVPStorageMedia, name: *mut ttstr) {
         unsafe { Self::from_base(this) }
             .media
             .get_name(unsafe { &mut *name });
     }
 
-    unsafe extern "C" fn normalize_domain_name(this: *mut iTVPStorageMedia, name: *mut ttstr) {
+    unsafe extern "C-unwind" fn normalize_domain_name(this: *mut iTVPStorageMedia, name: *mut ttstr) {
         unsafe { Self::from_base(this) }
             .media
             .normalize_domain_name(unsafe { &mut *name });
     }
 
-    unsafe extern "C" fn normalize_path_name(this: *mut iTVPStorageMedia, name: *mut ttstr) {
+    unsafe extern "C-unwind" fn normalize_path_name(this: *mut iTVPStorageMedia, name: *mut ttstr) {
         unsafe { Self::from_base(this) }
             .media
             .normalize_path_name(unsafe { &mut *name });
     }
 
-    unsafe extern "C" fn check_existent_storage(
+    unsafe extern "C-unwind" fn check_existent_storage(
         this: *mut iTVPStorageMedia,
         name: *const ttstr,
     ) -> bool {
@@ -164,7 +164,7 @@ impl<T: TVPStorageMedia> TVPStorageMediaWrapper<T> {
             .check_existent_storage(unsafe { &*name })
     }
 
-    unsafe extern "C" fn open(
+    unsafe extern "C-unwind" fn open(
         this: *mut iTVPStorageMedia,
         name: *const ttstr,
         flags: tjs_uint32,
@@ -174,7 +174,7 @@ impl<T: TVPStorageMedia> TVPStorageMediaWrapper<T> {
             .open(unsafe { &*name }, flags)
     }
 
-    unsafe extern "C" fn get_list_at(
+    unsafe extern "C-unwind" fn get_list_at(
         this: *mut iTVPStorageMedia,
         name: *const ttstr,
         lister: *mut iTVPStorageLister,
@@ -184,7 +184,7 @@ impl<T: TVPStorageMedia> TVPStorageMediaWrapper<T> {
             .get_list_at(unsafe { &*name }, lister);
     }
 
-    unsafe extern "C" fn get_locally_accessible_name(
+    unsafe extern "C-unwind" fn get_locally_accessible_name(
         this: *mut iTVPStorageMedia,
         name: *mut ttstr,
     ) {

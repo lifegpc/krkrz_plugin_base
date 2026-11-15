@@ -134,15 +134,25 @@ impl RoundingMode {
 #[serde(rename_all = "camelCase")]
 enum Unit {
     Auto,
+    #[serde(alias = "nanoseconds")]
     Nanosecond,
+    #[serde(alias = "microseconds")]
     Microsecond,
+    #[serde(alias = "milliseconds")]
     Millisecond,
+    #[serde(alias = "seconds")]
     Second,
+    #[serde(alias = "minutes")]
     Minute,
+    #[serde(alias = "hours")]
     Hour,
+    #[serde(alias = "days")]
     Day,
+    #[serde(alias = "weeks")]
     Week,
+    #[serde(alias = "months")]
     Month,
+    #[serde(alias = "years")]
     Year,
 }
 
@@ -323,9 +333,7 @@ impl Instant {
             .ok_or_else(|| Error::from("smallestUnit must specified."))?;
             let mut t = c.get("roundingIncrement")?;
             if let Some(t) = t.as_mut() {
-                if t.can_as_integer() {
-                    inc = t.as_integer();
-                }
+                inc = t.as_integer();
             }
             c.with_get_serde("roundingMode", |s| {
                 rounding_mode = s;
@@ -343,6 +351,45 @@ impl Instant {
         let re = tTJSVariant::from(n);
         unsafe { (*n).release() };
         Ok(re)
+    }
+
+    fn since(
+        &self,
+        other: &mut tTJSVariant,
+        options: Option<&mut tTJSVariant>,
+    ) -> Result<tTJSVariant, Error> {
+        let o = if Self::is_instance_of2(other) {
+            Self::get_ref2(other).0.clone()
+        } else {
+            Self::from(other)?.0
+        };
+        let opt = Self::_parse_diff_opt(options)?;
+        let re = Duration(self.0.since(&o, opt)?);
+        let n = Duration::create(re);
+        let re = tTJSVariant::from(n);
+        unsafe { (*n).release() };
+        Ok(re)
+    }
+
+    fn subtract(&self, duration: &mut tTJSVariant) -> Result<tTJSVariant, Error> {
+        let v = if Duration::is_instance_of2(duration) {
+            let dur = Duration::get_ref2(duration);
+            self.0.subtract(&dur.0)?
+        } else {
+            let dur = Duration::from(duration)?;
+            self.0.subtract(&dur.0)?
+        };
+        let new_instant = Self(v);
+        let n = Instant::create(new_instant);
+        let re = tTJSVariant::from(n);
+        unsafe { (*n).release() };
+        Ok(re)
+    }
+
+    #[tjs(rename = "toJSON")]
+    #[inline(always)]
+    fn to_json(&self, options: Option<&mut tTJSVariant>) -> Result<String, Error> {
+        self.to_string(options)
     }
 
     #[tjs(case = camel, serde)]
@@ -400,6 +447,80 @@ impl Instant {
                 smallest_unit: smallest_unit.map(|u| u.to_unit()),
             },
         )?)
+    }
+
+    #[tjs(rename = "toZonedDateTimeISO")]
+    fn to_zoned_date_time_iso(&self, time_zone: &mut tTJSVariant) -> Result<tTJSVariant, Error> {
+        let tz;
+        if time_zone.is_string() {
+            tz = temporal_rs::TimeZone::try_from_str(&String::to_param(time_zone)?)?;
+        } else if ZonedDateTime::is_instance_of2(time_zone) {
+            let zdt = ZonedDateTime::get_ref2(time_zone);
+            tz = zdt.0.time_zone().clone();
+        } else {
+            return Err(TypeError("string or ZonedDateTime").into());
+        }
+        let re = ZonedDateTime(self.0.to_zoned_date_time_iso(tz)?);
+        let n = ZonedDateTime::create(re);
+        let re = tTJSVariant::from(n);
+        unsafe { (*n).release() };
+        Ok(re)
+    }
+
+    fn until(
+        &self,
+        other: &mut tTJSVariant,
+        options: Option<&mut tTJSVariant>,
+    ) -> Result<tTJSVariant, Error> {
+        let o = if Self::is_instance_of2(other) {
+            Self::get_ref2(other).0.clone()
+        } else {
+            Self::from(other)?.0
+        };
+        let opt = Self::_parse_diff_opt(options)?;
+        let re = Duration(self.0.until(&o, opt)?);
+        let n = Duration::create(re);
+        let re = tTJSVariant::from(n);
+        unsafe { (*n).release() };
+        Ok(re)
+    }
+
+    #[tjs(skip)]
+    fn _parse_diff_opt(
+        options: Option<&mut tTJSVariant>,
+    ) -> Result<temporal_rs::options::DifferenceSettings, Error> {
+        let mut smallest_unit = Unit::Nanosecond;
+        let mut inc = 1;
+        let mut rounding_mode = RoundingMode::HalfExpand;
+        let mut largest_unit = Unit::Auto;
+        if let Some(options) = options {
+            let a = options.as_object_no_add_ref();
+            if a.is_null() {
+                return Err("options is not a object.".into());
+            }
+            let c = unsafe { &mut (*a) };
+            c.with_get_serde("largestUnit", |s| {
+                largest_unit = s;
+            })?;
+            let mut t = c.get("roundingIncrement")?;
+            if let Some(t) = t.as_mut() {
+                inc = t.as_integer();
+            }
+            c.with_get_serde("roundingMode", |s| {
+                rounding_mode = s;
+            })?;
+            c.with_get_serde("smallestUnit", |s| {
+                smallest_unit = s;
+            })?;
+        }
+        let mut opt = temporal_rs::options::DifferenceSettings::default();
+        opt.largest_unit = Some(largest_unit.to_unit());
+        opt.smallest_unit = Some(smallest_unit.to_unit());
+        opt.rounding_mode = Some(rounding_mode.to_rounding_mode());
+        opt.increment = Some(temporal_rs::options::RoundingIncrement::try_new(
+            inc as u32,
+        )?);
+        Ok(opt)
     }
 }
 
@@ -482,6 +603,12 @@ impl Duration {
             }
             _ => Err(TypeError("string or Duration or Dict").into()),
         }
+    }
+}
+
+impl Drop for Duration {
+    fn drop(&mut self) {
+        log!("Duration: dropped {:?}", self.0)
     }
 }
 

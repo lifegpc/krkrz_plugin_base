@@ -575,6 +575,26 @@ impl Duration {
         )?))
     }
 
+    #[tjs(static_method)]
+    fn compare(
+        duration1: &mut tTJSVariant,
+        duration2: &mut tTJSVariant,
+        options: Option<&mut tTJSVariant>,
+    ) -> Result<i32, Error> {
+        let d1 = Self::from(duration1)?;
+        let d2 = Self::from(duration2)?;
+        let mut relative_to = None;
+        if let Some(options) = options {
+            let a = options.as_object_no_add_ref();
+            if a.is_null() {
+                return Err("options is not a object.".into());
+            }
+            let c = unsafe { &mut (*a) };
+            relative_to = Self::_parse_relative_to(c)?;
+        }
+        Ok(d1.0.compare(&d2.0, relative_to)? as i8 as i32)
+    }
+
     #[allow(non_upper_case_globals)]
     fn from(info: &mut tTJSVariant) -> Result<Self, Error> {
         match info.typ() {
@@ -604,6 +624,59 @@ impl Duration {
             _ => Err(TypeError("string or Duration or Dict").into()),
         }
     }
+
+    fn abs(&self) -> Result<tTJSVariant, Error> {
+        let re = Self(self.0.abs());
+        let n = Duration::create(re);
+        let re = tTJSVariant::from(n);
+        unsafe { (*n).release() };
+        Ok(re)
+    }
+
+    fn add(&self, other: &mut tTJSVariant) -> Result<tTJSVariant, Error> {
+        let re = Self(if Self::is_instance_of2(other) {
+            let dur = Self::get_ref2(other);
+            self.0.add(&dur.0)?
+        } else {
+            let dur = Self::from(other)?;
+            self.0.add(&dur.0)?
+        });
+        let n = Duration::create(re);
+        let re = tTJSVariant::from(n);
+        unsafe { (*n).release() };
+        Ok(re)
+    }
+
+    fn negated(&self) -> Result<tTJSVariant, Error> {
+        let re = Self(self.0.negated());
+        let n = Duration::create(re);
+        let re = tTJSVariant::from(n);
+        unsafe { (*n).release() };
+        Ok(re)
+    }
+
+    #[tjs(skip)]
+    fn _parse_relative_to(
+        c: &mut iTJSDispatch2,
+    ) -> Result<Option<temporal_rs::options::RelativeTo>, Error> {
+        use temporal_rs::options::RelativeTo;
+        let mut opt = c.get("relativeTo")?;
+        if let Some(o) = opt.as_mut() {
+            if PlainDate::is_instance_of2(o) {
+                Ok(Some(RelativeTo::PlainDate(
+                    PlainDate::get_ref2(o).0.clone(),
+                )))
+            } else if ZonedDateTime::is_instance_of2(o) {
+                Ok(Some(RelativeTo::ZonedDateTime(
+                    ZonedDateTime::get_ref2(o).0.clone(),
+                )))
+            } else {
+                Err(TypeError("PlainDate or ZonedDateTime").into())
+            }
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 impl Drop for Duration {
@@ -630,6 +703,24 @@ impl Now {
         let now = temporal_rs::now::Now::new(temporal_rs::sys::LocalHostSystem);
         let tz = now.time_zone()?;
         Ok(tz.identifier()?)
+    }
+}
+
+struct PlainDate(temporal_rs::PlainDate);
+
+#[Tjs2Class]
+#[tjs(new = "Temporal.PlainDate")]
+impl PlainDate {
+    fn new(year: i64, month: i64, day: i64, calendar: Option<String>) -> Result<Self, Error> {
+        let year = year as i32;
+        let month = month as u8;
+        let day = day as u8;
+        if let Some(c) = calendar {
+            let c = temporal_rs::Calendar::try_from_utf8(c.as_bytes())?;
+            Ok(Self(temporal_rs::PlainDate::new(year, month, day, c)?))
+        } else {
+            Ok(Self(temporal_rs::PlainDate::new_iso(year, month, day)?))
+        }
     }
 }
 
@@ -679,6 +770,14 @@ impl Temporal {
     #[tjs(static_member, case = pascal)]
     fn now() -> tTJSVariant {
         let class = Now::create_native_class().1;
+        let re = tTJSVariant::from(class);
+        unsafe { (*class).release() };
+        re
+    }
+
+    #[tjs(static_member, case = pascal)]
+    fn plain_date() -> tTJSVariant {
+        let class = PlainDate::create_native_class().1;
         let re = tTJSVariant::from(class);
         unsafe { (*class).release() };
         re

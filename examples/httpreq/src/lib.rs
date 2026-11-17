@@ -14,11 +14,14 @@ use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
 use tokio_util::sync::CancellationToken;
 
+mod http_request;
+use http_request::HttpRequest;
+
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
 static mut RUNTIME: Option<Runtime> = None;
 static mut EXECUTOR: Option<AsyncExecutor> = None;
 
-generate_origin_static_block!(http_req, abort_signal, web_socket);
+generate_origin_static_block!(http_req, abort_signal, web_socket, http_request);
 
 enum ResponseBody {
     Bytes(Vec<u8>),
@@ -941,11 +944,13 @@ unsafe extern "system-unwind" fn v2_link(exporter: *mut iTVPFunctionExporter) ->
         RUNTIME = Some(runtime);
         EXECUTOR = Some(executor);
     }
+    http_request::initialize_encoding();
 
     let http_req = HttpReq::create_native_class().1;
     let abort_signal = AbortSignal::create_native_class().1;
     let web_socket = WebSocket::create_native_class().1;
-    register_var!(http_req, abort_signal, web_socket);
+    let http_request = HttpRequest::create_native_class().1;
+    register_var!(http_req, abort_signal, web_socket, http_request);
     unsafe { GLOBAL_REF_COUNT_AT_INIT = TVPPluginGlobalRefCount };
     0
 }
@@ -956,7 +961,8 @@ unsafe extern "system-unwind" fn v2_unlink() -> i32 {
         log!("[httpreq]Can not unlink plugin");
         return TJS_E_FAIL;
     }
-    unregister_var!(http_req, abort_signal, web_socket);
+    unregister_var!(http_req, abort_signal, web_socket, http_request);
+    http_request::uninitialize_encoding();
     unsafe {
         RUNTIME = None;
         EXECUTOR = None;

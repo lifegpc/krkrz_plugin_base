@@ -8,11 +8,43 @@ An asynchronous HTTP and WebSocket client plugin example for Kirikiri Z (`krkrz`
 Plugins.link("httpreq.dll");
 ```
 
-Linking the plugin registers `HttpReq`, `AbortSignal`, and `WebSocket` in the TJS global scope.
+Linking the plugin registers `HttpReq`, `AbortSignal`, `WebSocket`, and `HttpRequest` in the TJS global scope.
 
----
+`HttpRequest` is compatible with the API exposed by the [wamsoft/httprequest plugin](https://github.com/wamsoft/httprequest), including its request methods, response properties, ready-state constants, and event callbacks.
 
 ## API Reference
+
+### `HttpRequest`
+
+The `HttpRequest` class provides the same HTTP/HTTPS request API as the linked C++ plugin.
+
+#### `new HttpRequest(window, cert=true, agentName="KIRIKIRI")`
+
+- **`window`** (`Window`): Kirikiri window used to validate the calling context.
+- **`cert`** (`Boolean`, optional): Validate TLS certificates. Defaults to `true`.
+- **`agentName`** (`String`, optional): User-Agent header. Defaults to `"KIRIKIRI"`.
+
+#### Methods
+
+- **`open(method, url, userName=void, password=void)`**: Configures an HTTP or HTTPS request.
+- **`setRequestHeader(name, value)`**: Adds a request header. Set `Content-Type` here to choose the request body encoding.
+- **`send(data=void, storeStorage=void)`**: Sends a string or `Octet` body asynchronously and optionally saves the response to a Kirikiri storage.
+- **`sendStorage(storage, storeStorage=void)`**: Streams a request body from a Kirikiri storage asynchronously and optionally saves the response.
+- **`sendSync(data=void, storeStorage=void)`** and **`sendStorageSync(storage, storeStorage=void)`**: Synchronous variants that return the HTTP status code (or `0` on a communication error).
+- **`abort()`**: Cancels the active request.
+- **`getAllResponseHeaders()`**: Returns a dictionary of response headers.
+- **`getResponseHeader(name)`**: Returns one response header, or `void` when it is absent.
+- **`getResponseText(encoding=void)`**: Returns response bytes decoded with the requested encoding, or the response `Content-Type` charset by default.
+
+#### Properties and events
+
+Read-only properties are `readyState`, `response`, `responseData`, `status`, `statusText`, `contentType`, `contentTypeEncoding`, and `contentLength`. `response` is a string for `text/*` content types and an `Octet` otherwise; `responseData` is an `Octet` when a response body is retained. When `storeStorage` is supplied, the response is written to that storage in chunks and is not retained in these body properties.
+
+Assign **`onReadyStateChange(readyState)`** and **`onProgress(upload, percent)`** callbacks on the instance. Progress is a percentage from `0` to `100`. The ready-state constants are `UNINITIALIZED`, `OPEN`, `SENT`, `RECEIVING`, and `LOADED`.
+
+`sendStorage` reads Kirikiri storage streams in chunks, so large request files do not need to be loaded into a single in-memory buffer.
+
+---
 
 ### `HttpReq`
 

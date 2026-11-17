@@ -16,7 +16,7 @@ windows = { version = "0.62", features = ["Win32_UI_Controls", "Win32_Graphics_G
 winresource = "0.1"
 
 [package.metadata.winresource]
-OriginalFilename = "httpreq.dll"
+OriginalFilename = "task_dialog.dll"
 LegalCopyright = "Copyright ©lifegpc 2026"
 CompanyName = "lifegpc"
 FileDescription = "A Win32 TaskDialog wrapper plugin for krkrz. Source code: https://github.com/lifegpc/krkrz_plugin_base/tree/master/examples/task_dialog"

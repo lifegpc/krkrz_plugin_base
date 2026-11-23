@@ -1,0 +1,22 @@
+[package]
+name = "avif"
+version = "0.1.0"
+edition = "2024"
+description = "AVIF image loading plugin for krkrz."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["avif-native"] }
+krkrz_plugin_base = { path = "../../", default-features = false, features = ["com"] }
+windows = { version = "0.62", features = ["Win32_System_Com"] }
+
+[build-dependencies]
+winresource = "0.1"
+
+[package.metadata.winresource]
+OriginalFilename = "avif.dll"
+LegalCopyright = "Copyright ©lifegpc 2026"
+CompanyName = "lifegpc"
+FileDescription = "AVIF image loading plugin for krkrz. Source code: https://github.com/lifegpc/krkrz_plugin_base/tree/master/examples/avif"

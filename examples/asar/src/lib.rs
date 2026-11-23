@@ -127,7 +127,7 @@ impl Archive {
                 self.directories
                     .entry(parent_key.clone())
                     .or_default()
-                    .insert(name.to_lowercase(), format!("{name}/"));
+                    .insert(name.to_lowercase(), format!("{}/", name.to_lowercase()));
                 self.index_directory(dir_children, &relative_path, archive_len)?;
                 continue;
             }
@@ -171,7 +171,7 @@ impl Archive {
             self.directories
                 .entry(parent_key.clone())
                 .or_default()
-                .insert(name.to_lowercase(), name.clone());
+                .insert(name.to_lowercase(), name.to_lowercase());
             self.files.insert(
                 key,
                 FileEntry {
@@ -349,9 +349,15 @@ impl TVPStorageMedia for AsarFs {
         name.assign("asar");
     }
 
-    fn normalize_domain_name(&mut self, _name: &mut ttstr) {}
+    // Kirikiri's auto-path table matches lister entries by their exact key, so
+    // normalize both queried paths and enumerated names the same way.
+    fn normalize_domain_name(&mut self, name: &mut ttstr) {
+        name.to_lower_case();
+    }
 
-    fn normalize_path_name(&mut self, _name: &mut ttstr) {}
+    fn normalize_path_name(&mut self, name: &mut ttstr) {
+        name.to_lower_case();
+    }
 
     fn check_existent_storage(&mut self, name: &ttstr) -> bool {
         let name = name.to_string();
@@ -397,6 +403,11 @@ impl TVPStorageMedia for AsarFs {
             return;
         };
         for entry in archive.list_at(&entry_path) {
+            let entry = entry.trim_start_matches(['/', '\\']);
+            if entry.is_empty() {
+                continue;
+            }
+            let entry = entry.to_lowercase();
             let entry = ttstr::from(entry.as_str());
             unsafe { (*lister).add(&entry) };
         }

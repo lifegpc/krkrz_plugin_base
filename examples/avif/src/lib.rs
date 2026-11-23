@@ -9,27 +9,6 @@ use windows::core::Interface;
 
 static mut GLOBAL_REF_COUNT_AT_INIT: tjs_int = 0;
 
-type UnwindLoadingHandler = unsafe extern "C-unwind" fn(
-    formatdata: *mut std::ffi::c_void,
-    callbackdata: *mut std::ffi::c_void,
-    sizecallback: tTVPGraphicSizeCallback,
-    scanlinecallback: tTVPGraphicScanLineCallback,
-    metainfopushcallback: tTVPMetaInfoPushCallback,
-    src: *mut IStream,
-    keyidx: tjs_int32,
-    mode: tTVPGraphicLoadMode,
-);
-
-fn loading_handler() -> tTVPGraphicLoadingHandlerForPlugin {
-    // TVP's C++ callback typedef does not carry an unwind annotation. The callback
-    // must use C-unwind because TVPThrowExceptionMessage raises a C++ exception.
-    unsafe {
-        std::mem::transmute::<Option<UnwindLoadingHandler>, tTVPGraphicLoadingHandlerForPlugin>(
-            Some(load_avif),
-        )
-    }
-}
-
 unsafe extern "C-unwind" fn load_avif(
     _formatdata: *mut std::ffi::c_void,
     callbackdata: *mut std::ffi::c_void,
@@ -186,7 +165,7 @@ unsafe extern "system-unwind" fn v2_link(exporter: *mut iTVPFunctionExporter) ->
     unsafe {
         TVPRegisterGraphicLoadingHandler(
             &extension,
-            loading_handler(),
+            Some(load_avif),
             None,
             None,
             None,
@@ -208,7 +187,7 @@ unsafe extern "system-unwind" fn v2_unlink() -> i32 {
     unsafe {
         TVPUnregisterGraphicLoadingHandler(
             &extension,
-            loading_handler(),
+            Some(load_avif),
             None,
             None,
             None,

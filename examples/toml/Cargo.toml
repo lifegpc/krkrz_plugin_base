@@ -1,0 +1,23 @@
+[package]
+name = "toml"
+version = "0.1.0"
+edition = "2024"
+description = "TOML plugin for krkrz."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1"
+krkrz_plugin_base = { path = "../../", default-features = false, features = ["serde", "com"] }
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+
+[build-dependencies]
+winresource = "0.1"
+
+[package.metadata.winresource]
+OriginalFilename = "toml.dll"
+LegalCopyright = "Copyright ©lifegpc 2026"
+CompanyName = "lifegpc"
+FileDescription = "TOML plugin for krkrz. Source code: https://github.com/lifegpc/krkrz_plugin_base/tree/master/examples/toml"

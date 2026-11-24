@@ -1,0 +1,23 @@
+[package]
+name = "videos"
+version = "0.1.0"
+edition = "2024"
+description = "DirectShow WebM video plugin for krkrz."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["webm", "vp9", "opus"]
+log = []
+webm = []
+vp9 = ["dep:rvp9-decoder", "dep:rvp9-core"]
+opus = ["dep:opus-rs"]
+
+[dependencies]
+krkrz_plugin_base = { path = "../../", default-features = false, features = ["com"] }
+rvp9-decoder = { version = "0.2.0-alpha.3", optional = true }
+rvp9-core = { version = "0.2.0-alpha.3", optional = true }
+opus-rs = { version = "0.1.42", optional = true }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Media_DirectShow", "Win32_Media_MediaFoundation", "Win32_System_Com"] }
+windows-core = "0.62"

@@ -1,0 +1,14 @@
+[package]
+name = "mp3"
+version = "0.1.0"
+edition = "2024"
+description = "Pure Rust MP3 decoder plugin for krkrz."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+krkrz_plugin_base = { path = "../../", default-features = false, features = ["com"] }
+puremp3 = "0.1.0"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com"] }
+windows-core = "0.62"

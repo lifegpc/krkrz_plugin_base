@@ -5,7 +5,7 @@ edition = "2024"
 description = "DirectShow WebM video plugin for krkrz."
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [features]
 default = ["webm", "vp9", "opus"]
